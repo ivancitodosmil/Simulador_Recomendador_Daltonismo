@@ -1,0 +1,141 @@
+/* ==================================================================
+   Sprint 1 · Componentes de la interfaz (popup; reutilizables por el
+   panel lateral en sprints posteriores).
+   Reglas del proyecto aplicadas aquí:
+   - Foco visible de 2px en todo control (tokens --foco-*).
+   - Los estados llevan icono de forma distinta + texto, nunca solo color.
+   - Toda muestra de color lleva su hexadecimal escrito al lado.
+   ================================================================== */
+
+body {
+  margin: 0;
+  background-color: var(--fondo);
+  color: var(--texto);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+}
+
+/* El popup necesita un ancho fijo para no colapsar. */
+body.popup {
+  width: 340px;
+  padding: 14px 16px 16px;
+  box-sizing: border-box;
+}
+
+h1 {
+  margin: 0 0 2px;
+  font-size: 1.05rem;
+}
+
+h2 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+}
+
+.descripcion {
+  margin: 0 0 12px;
+  color: var(--texto-secundario);
+  font-size: 0.82rem;
+}
+
+/* Foco visible de 2px, siempre. */
+:focus-visible {
+  outline: var(--foco-grosor) solid var(--foco-color);
+  outline-offset: 2px;
+}
+
+/* Botones */
+.boton {
+  font: inherit;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--borde);
+  background-color: var(--superficie);
+  color: var(--texto);
+  cursor: pointer;
+}
+
+.boton--primario {
+  background-color: var(--primario);
+  border-color: var(--primario);
+  color: #FFFFFF;
+}
+
+.boton:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Estado: icono de forma distinta + texto. El color del icono es un
+   refuerzo, nunca el único canal. */
+.estado {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0;
+  font-size: 0.85rem;
+  min-height: 1.2em;
+}
+
+.estado-icono {
+  font-weight: 700;
+  flex: none;
+}
+
+.estado--ok .estado-icono { color: var(--correcto); }
+.estado--warning .estado-icono { color: var(--advertencia); }
+.estado--error .estado-icono { color: var(--error); }
+.estado--info .estado-icono { color: var(--primario); }
+
+.niveles {
+  margin: 0 0 10px;
+  color: var(--texto-secundario);
+  font-size: 0.8rem;
+}
+
+/* Lista de la paleta */
+.paleta-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.color-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background-color: var(--superficie);
+  border-radius: 6px;
+}
+
+/* La muestra es decorativa (aria-hidden): el hex de al lado la anuncia. */
+.muestra-color {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid var(--borde);
+  flex: none;
+}
+
+.color-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.hex {
+  font-family: Consolas, "Courier New", monospace;
+  color: var(--texto);
+}
+
+.color-meta {
+  color: var(--texto-secundario);
+  font-size: 0.78rem;
+}

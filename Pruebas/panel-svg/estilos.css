@@ -1,0 +1,118 @@
+/* Panel SVG: parte de los colores del grafico se declara aqui como variables CSS
+   y se aplica a elementos SVG mediante clases. La extension debe resolver var()
+   y el estilo computado, ademas de leer los atributos fill/stroke del DOM. */
+:root {
+  --color-fondo: #FFFFFF;
+  --color-tinta: #21262B;
+  --color-tinta-suave: #5A6572;
+  --color-borde: #E3E6EA;
+  --color-barras: #4E79A7;
+  --color-area: #A8CFCB;
+  --color-area-borde: #2C7873;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-fondo);
+  color: var(--color-tinta);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+header {
+  padding: 24px 28px 8px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+}
+
+.subtitulo {
+  margin: 0;
+  color: var(--color-tinta-suave);
+  font-size: 0.95rem;
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 20px;
+  padding: 20px 28px 32px;
+}
+
+.tarjeta {
+  background-color: #FFFFFF;
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  padding: 16px 18px 14px;
+}
+
+.tarjeta h2 {
+  margin: 0 0 2px;
+  font-size: 1.05rem;
+}
+
+.nota {
+  margin: 0 0 10px;
+  color: var(--color-tinta-suave);
+  font-size: 0.8rem;
+}
+
+.tarjeta svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Colores aplicados a elementos SVG via CSS (variables). */
+.barra {
+  fill: var(--color-barras);
+}
+
+.area-total {
+  fill: var(--color-area);
+  stroke: var(--color-area-borde);
+}
+
+.eje text {
+  fill: #5A6572;
+  font-size: 11px;
+}
+
+.eje path,
+.eje line {
+  stroke: #C9CFD6;
+}
+
+.leyenda {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 0.82rem;
+  color: var(--color-tinta-suave);
+}
+
+.leyenda li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.muestra {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+footer {
+  padding: 0 28px 28px;
+  font-size: 0.85rem;
+}
+
+footer a {
+  color: #0B57D0;
+}
