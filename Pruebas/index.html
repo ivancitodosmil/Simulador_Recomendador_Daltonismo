@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Banco de pruebas — Accesibilidad cromática</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #FFFFFF;
+      color: #1A1A1A;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    header { padding: 32px 28px 8px; }
+    h1 { margin: 0 0 6px; font-size: 1.6rem; }
+    .subtitulo { margin: 0; color: #5A6572; font-size: 0.95rem; max-width: 78ch; }
+    main {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+      padding: 24px 28px 8px;
+      max-width: 1200px;
+    }
+    a.panel {
+      display: block;
+      border: 1px solid #E4E7EB;
+      border-radius: 10px;
+      padding: 16px 18px;
+      text-decoration: none;
+      color: inherit;
+    }
+    a.panel:hover { border-color: #0B57D0; }
+    a.panel h2 { margin: 0 0 6px; font-size: 1.05rem; color: #0B57D0; }
+    a.panel p { margin: 0; font-size: 0.88rem; color: #5A6572; }
+    .etiqueta {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 0.75rem;
+      color: #1A1A1A;
+      background-color: #F4F6F8;
+      border-radius: 999px;
+      padding: 2px 10px;
+    }
+    footer { padding: 20px 28px 32px; font-size: 0.85rem; color: #5A6572; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Banco de pruebas — Accesibilidad cromática de dashboards</h1>
+    <p class="subtitulo">Cinco paneles construidos a propósito para validar la extensión de navegador: cada uno provoca un escenario distinto de extracción o de evaluación de color. Datos ficticios de ventas trimestrales por región, ejercicio 2025.</p>
+  </header>
+
+  <main>
+    <a class="panel" href="panel-svg/index.html">
+      <h2>1 · Panel SVG</h2>
+      <p>Barras, líneas, área y pastel con D3. Colores en variables CSS y en atributos fill/stroke.</p>
+      <span class="etiqueta">extracción de primer nivel (DOM + CSS)</span>
+    </a>
+
+    <a class="panel" href="panel-canvas/index.html">
+      <h2>2 · Panel Canvas</h2>
+      <p>Los mismos cuatro gráficos con Chart.js sobre canvas, sin ningún color declarado en CSS.</p>
+      <span class="etiqueta">muestreo de píxeles</span>
+    </a>
+
+    <a class="panel" href="panel-categorias/index.html">
+      <h2>3 · Panel Categorías</h2>
+      <p>Barras apiladas con dieciocho categorías y leyenda de dieciocho colores.</p>
+      <span class="etiqueta">paletas de catálogo insuficientes</span>
+    </a>
+
+    <a class="panel" href="panel-contraste/index.html">
+      <h2>4 · Panel Contraste</h2>
+      <p>Fallos deliberados: texto gris claro sobre blanco, ejes de bajo contraste y series de luminancia casi idéntica. Ratios esperados anotados en comentarios HTML.</p>
+      <span class="etiqueta">verificación del cálculo de contraste</span>
+    </a>
+
+    <a class="panel" href="panel-conforme/index.html">
+      <h2>5 · Panel Conforme</h2>
+      <p>Paleta Okabe-Ito sobre fondo blanco con texto oscuro: todo cumple.</p>
+      <span class="etiqueta">informe de cumplimiento sin reemplazos</span>
+    </a>
+  </main>
+
+  <footer>
+    Sin dependencias de red: Chart.js 4.4.9 y D3 7.9.0 servidos desde <code>lib/</code>. Los paneles funcionan abriendo cada <code>index.html</code> directamente en el navegador.
+  </footer>
+</body>
+</html>

@@ -1,0 +1,114 @@
+/* Panel Conforme: texto oscuro sobre fondo blanco y paleta Okabe-Ito.
+   Todo cumple: la extension no deberia proponer ningun cambio. */
+body {
+  margin: 0;
+  background-color: #FFFFFF;
+  color: #1A1A1A; /* sobre blanco: 17.40:1, supera AA y AAA */
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+header {
+  padding: 24px 28px 8px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+}
+
+.subtitulo {
+  margin: 0;
+  color: #5A6572; /* sobre blanco: 5.93:1, supera AA */
+  font-size: 0.95rem;
+  max-width: 78ch;
+}
+
+.paleta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 14px 28px 0;
+  font-size: 0.82rem;
+}
+
+.paleta .color {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.paleta .muestra {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid #E4E7EB;
+  display: inline-block;
+}
+
+.paleta code {
+  color: #5A6572;
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 20px;
+  padding: 20px 28px 32px;
+}
+
+.tarjeta {
+  background-color: #FFFFFF;
+  border: 1px solid #E4E7EB;
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.tarjeta h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+
+.lienzo {
+  position: relative;
+  height: 300px;
+}
+
+.lienzo-alto {
+  position: relative;
+  height: 360px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 8px;
+}
+
+th, td {
+  border: 1px solid #E4E7EB;
+  padding: 6px 10px;
+  text-align: right;
+}
+
+th:first-child, td:first-child {
+  text-align: left;
+}
+
+thead th {
+  background-color: #F4F6F8;
+}
+
+footer {
+  padding: 0 28px 28px;
+  font-size: 0.85rem;
+}
+
+footer a {
+  color: #0B57D0;
+}

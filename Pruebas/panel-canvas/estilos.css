@@ -1,0 +1,44 @@
+/* Panel Canvas: esta hoja NO declara ningun color a proposito — solo
+   tipografia y layout. Todos los colores del panel se pintan dentro de los
+   elementos canvas, de modo que la extension se ve forzada a muestrear pixeles. */
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+header {
+  padding: 24px 28px 8px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+}
+
+.subtitulo {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 24px;
+  padding: 20px 28px 32px;
+}
+
+.tarjeta h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+
+.lienzo {
+  position: relative;
+  height: 320px;
+}
+
+footer {
+  padding: 0 28px 28px;
+  font-size: 0.85rem;
+}

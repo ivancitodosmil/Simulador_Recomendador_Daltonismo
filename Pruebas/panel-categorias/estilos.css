@@ -1,0 +1,54 @@
+/* Panel Categorias: layout sencillo para un unico grafico grande con
+   dieciocho series apiladas y una leyenda de dieciocho entradas. */
+body {
+  margin: 0;
+  background-color: #FFFFFF;
+  color: #21262B;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+header {
+  padding: 24px 28px 8px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+}
+
+.subtitulo {
+  margin: 0;
+  color: #5A6572;
+  font-size: 0.95rem;
+  max-width: 72ch;
+}
+
+main {
+  padding: 20px 28px 32px;
+}
+
+.tarjeta {
+  background-color: #FFFFFF;
+  border: 1px solid #E3E6EA;
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+
+.tarjeta h2 {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+}
+
+.lienzo {
+  position: relative;
+  height: 520px;
+}
+
+footer {
+  padding: 0 28px 28px;
+  font-size: 0.85rem;
+}
+
+footer a {
+  color: #0B57D0;
+}

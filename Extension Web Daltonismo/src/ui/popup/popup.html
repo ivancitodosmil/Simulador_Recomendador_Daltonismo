@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Evaluador cromático de dashboards</title>
+  <link rel="stylesheet" href="../estilos/tokens.css">
+  <link rel="stylesheet" href="../estilos/componentes.css">
+</head>
+<body class="popup">
+  <header class="popup-cabecera">
+    <h1>Evaluador cromático</h1>
+    <p class="descripcion">Extrae la paleta de colores del dashboard de la pestaña actual.</p>
+  </header>
+
+  <main>
+    <button id="evaluate-button" class="boton boton--primario" type="button"
+            aria-label="Extraer la paleta de colores de la página actual">
+      Extraer paleta
+    </button>
+
+    <!-- Estado con icono de forma distinta + texto: nunca solo color. -->
+    <p id="status" class="estado" role="status" aria-live="polite"></p>
+
+    <section id="result" hidden aria-label="Resultado de la extracción">
+      <h2 id="summary">Paleta detectada</h2>
+      <p id="levels" class="niveles"></p>
+      <!-- Cada muestra lleva su valor hexadecimal escrito al lado. -->
+      <ul id="palette-list" class="paleta-lista"></ul>
+    </section>
+  </main>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

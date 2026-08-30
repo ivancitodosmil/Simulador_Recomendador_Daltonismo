@@ -1,0 +1,90 @@
+/* Panel Contraste: los colores de texto de esta hoja incumplen WCAG a proposito.
+   Cada par color/fondo tiene su ratio esperado documentado en index.html. */
+:root {
+  --gris-titulo: #9E9E9E;      /* sobre blanco: 2.68:1 */
+  --gris-texto: #BDBDBD;       /* sobre blanco: 1.88:1 */
+  --gris-etiqueta: #C8C8C8;    /* sobre blanco: 1.67:1 */
+}
+
+body {
+  margin: 0;
+  background-color: #FFFFFF;
+  color: var(--gris-texto);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+header {
+  padding: 24px 28px 8px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+  color: var(--gris-titulo);
+}
+
+.subtitulo {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--gris-texto);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  padding: 20px 28px 0;
+}
+
+.kpi {
+  border: 1px solid #F0F0F0;
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.kpi .valor {
+  display: block;
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--gris-texto);
+}
+
+.kpi .etiqueta {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.85rem;
+  color: var(--gris-etiqueta);
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 20px;
+  padding: 20px 28px 32px;
+}
+
+.tarjeta {
+  border: 1px solid #F0F0F0;
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.tarjeta h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  color: var(--gris-titulo);
+}
+
+.lienzo {
+  position: relative;
+  height: 300px;
+}
+
+footer {
+  padding: 0 28px 28px;
+  font-size: 0.85rem;
+}
+
+footer a {
+  color: var(--gris-texto);
+}

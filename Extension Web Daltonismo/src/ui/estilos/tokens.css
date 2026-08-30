@@ -1,0 +1,29 @@
+/* ==================================================================
+   Tokens de diseño de la interfaz de la extensión.
+   Paleta verificada contra WCAG 2.1 y contra las tres simulaciones
+   de daltonismo (protanopia, deuteranopia, tritanopia).
+   Regla del proyecto: ningún estado se comunica solo con color;
+   siempre acompaña un icono de forma distinta y un texto.
+   ================================================================== */
+:root {
+  /* Superficies y estructura */
+  --fondo: #FFFFFF;
+  --superficie: #F4F6F8;
+  --borde: #767E86;
+
+  /* Texto */
+  --texto: #1A1D21;
+  --texto-secundario: #585F66;
+
+  /* Acción e interacción */
+  --primario: #005BB6;
+
+  /* Estados semánticos (siempre con icono + texto, nunca solo color) */
+  --correcto: #1D4417;
+  --advertencia: #6E7000;
+  --error: #965860;
+
+  /* Foco visible: todo control enfocable muestra un contorno de 2px */
+  --foco-grosor: 2px;
+  --foco-color: var(--primario);
+}
