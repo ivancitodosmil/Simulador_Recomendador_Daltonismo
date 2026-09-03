@@ -9,7 +9,7 @@
 <body class="popup">
   <header class="popup-cabecera">
     <h1>Evaluador cromático</h1>
-    <p class="descripcion">Extrae la paleta de colores del dashboard de la pestaña actual.</p>
+    <p class="descripcion">Extrae la paleta del dashboard y simula cómo la percibe una persona con daltonismo.</p>
   </header>
 
   <main>
@@ -18,13 +18,50 @@
       Extraer paleta
     </button>
 
+    <fieldset class="simulacion">
+      <legend>Simulación de daltonismo</legend>
+
+      <div class="campo">
+        <label for="deficiency-select">Tipo de deficiencia</label>
+        <select id="deficiency-select"
+                aria-label="Tipo de deficiencia de percepción del color a simular">
+          <option value="none">Ninguna (vista original)</option>
+          <option value="protanopia">Protanopía</option>
+          <option value="deuteranopia">Deuteranopía</option>
+          <option value="tritanopia">Tritanopía</option>
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="severity-slider">Severidad</label>
+        <div class="campo-deslizador">
+          <input type="range" id="severity-slider" min="0" max="1" step="0.1" value="1"
+                 aria-label="Severidad de la simulación, de cero a uno en pasos de una décima">
+          <!-- Valor numérico siempre visible junto al control. -->
+          <output id="severity-value" for="severity-slider">1,0</output>
+        </div>
+      </div>
+
+      <!-- Nota visible SOLO al seleccionar tritanopía (icono + texto); con el
+           resto de opciones permanece oculta (popup.js: updateSimulationControls). -->
+      <p id="severity-note" class="nota-control" hidden>
+        <span class="estado-icono" aria-hidden="true">ℹ</span>
+        <span>La severidad se deshabilita en tritanopía: el método de Brettel (1997) modela la
+        dicromatopsia completa y no admite graduación.</span>
+      </p>
+    </fieldset>
+
     <!-- Estado con icono de forma distinta + texto: nunca solo color. -->
     <p id="status" class="estado" role="status" aria-live="polite"></p>
 
     <section id="result" hidden aria-label="Resultado de la extracción">
       <h2 id="summary">Paleta detectada</h2>
       <p id="levels" class="niveles"></p>
-      <!-- Cada muestra lleva su valor hexadecimal escrito al lado. -->
+      <!-- Paleta original y simulada en paralelo; cada muestra con su hex al lado. -->
+      <div class="paleta-encabezados" aria-hidden="true">
+        <span>Original</span>
+        <span id="simulated-header">Simulada</span>
+      </div>
       <ul id="palette-list" class="paleta-lista"></ul>
     </section>
   </main>

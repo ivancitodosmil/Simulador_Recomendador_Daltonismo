@@ -1,9 +1,10 @@
 // ------------------------------------------------------------------
-// Sprint 1 · Service worker (módulo ES). Orquesta el flujo:
-// popup → service worker → content script → respuesta con la paleta.
-// Si el content script aún no está inyectado, lo inyecta bajo demanda
-// con chrome.scripting; si la página tiene canvas ilegibles o no
-// aporta colores, recurre al nivel 3 (captura de pestaña).
+// Sprints 1-2 · Service worker (módulo ES). Orquesta el flujo
+// popup → service worker → content script para la extracción de la
+// paleta (sprint 1) y para aplicar o retirar la simulación en vivo
+// (sprint 2). Si el content script aún no está inyectado, lo inyecta
+// bajo demanda con chrome.scripting; si la página tiene canvas
+// ilegibles o no aporta colores, recurre al nivel 3 (captura).
 // ------------------------------------------------------------------
 
 import { extractFromCapture } from "../core/extraccion/captura.js";
@@ -23,43 +24,50 @@ function isRestrictedUrl(url) {
   }
 }
 
+/** Devuelve la pestaña activa o un objeto de error listo para responder. */
+async function getActiveTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab || !tab.id) {
+    return { error: { ok: false, error: "no-active-tab" } };
+  }
+  if (isRestrictedUrl(tab.url || "")) {
+    return { error: { ok: false, error: "unsupported-page" } };
+  }
+  return { tab };
+}
+
 /**
- * Pide la paleta al content script. Si el envío falla porque aún no está
+ * Envía un mensaje al content script. Si el envío falla porque aún no está
  * inyectado ("Receiving end does not exist"), lo inyecta y reintenta.
  */
-async function requestFromContent(tabId) {
+async function forwardToContent(tabId, message) {
   try {
-    return await chrome.tabs.sendMessage(tabId, { type: "EXTRACT_PALETTE" });
+    return await chrome.tabs.sendMessage(tabId, message);
   } catch (firstError) {
     await chrome.scripting.executeScript({
       target: { tabId },
       files: ["src/content/content-script.js"]
     });
-    return await chrome.tabs.sendMessage(tabId, { type: "EXTRACT_PALETTE" });
+    return await chrome.tabs.sendMessage(tabId, message);
   }
 }
 
-/** Flujo completo de extracción sobre la pestaña activa. */
+/** Flujo de extracción del sprint 1, con respaldo de captura (nivel 3). */
 async function handleExtraction() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab || !tab.id) {
-    return { ok: false, error: "no-active-tab" };
-  }
-  if (isRestrictedUrl(tab.url || "")) {
-    return { ok: false, error: "unsupported-page" };
-  }
+  const { tab, error } = await getActiveTab();
+  if (error) return error;
 
   let response;
   try {
-    response = await requestFromContent(tab.id);
-  } catch (error) {
+    response = await forwardToContent(tab.id, { type: "EXTRACT_PALETTE" });
+  } catch (injectionError) {
     return {
       ok: false,
       error: "injection-failed",
       // El caso típico en el banco de pruebas: archivos file:// sin el
       // permiso "Permitir acceso a URL de archivo" activado.
       isFileUrl: (tab.url || "").startsWith("file:"),
-      detail: String(error)
+      detail: String(injectionError)
     };
   }
 
@@ -69,12 +77,28 @@ async function handleExtraction() {
       response.palette = mergePalettes(response.palette, capture.entries, "capture");
       response.levels = [...response.levels, "capture"];
       response.approximate = true;
-    } catch (error) {
+    } catch (captureError) {
       // La captura es un respaldo: si falla se informa sin invalidar el resto.
-      response.captureError = String(error);
+      response.captureError = String(captureError);
     }
   }
   return response;
+}
+
+/** Reenvía al content script las órdenes de simulación del sprint 2. */
+async function handleSimulationMessage(message) {
+  const { tab, error } = await getActiveTab();
+  if (error) return error;
+  try {
+    return await forwardToContent(tab.id, message);
+  } catch (injectionError) {
+    return {
+      ok: false,
+      error: "injection-failed",
+      isFileUrl: (tab.url || "").startsWith("file:"),
+      detail: String(injectionError)
+    };
+  }
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -83,6 +107,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(sendResponse)
       .catch((error) => sendResponse({ ok: false, error: "unexpected", detail: String(error) }));
     return true; // respuesta asíncrona
+  }
+  if (message && (message.type === "APPLY_SIMULATION" || message.type === "CLEAR_SIMULATION")) {
+    handleSimulationMessage(message)
+      .then(sendResponse)
+      .catch((error) => sendResponse({ ok: false, error: "unexpected", detail: String(error) }));
+    return true;
   }
   return false;
 });
