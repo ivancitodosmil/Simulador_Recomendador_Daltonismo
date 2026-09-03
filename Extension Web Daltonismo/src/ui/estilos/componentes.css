@@ -1,11 +1,19 @@
 /* ==================================================================
-   Sprint 1 · Componentes de la interfaz (popup; reutilizables por el
-   panel lateral en sprints posteriores).
+   Sprints 1-2 · Componentes de la interfaz (popup; reutilizables por
+   el panel lateral en sprints posteriores).
    Reglas del proyecto aplicadas aquí:
    - Foco visible de 2px en todo control (tokens --foco-*).
    - Los estados llevan icono de forma distinta + texto, nunca solo color.
    - Toda muestra de color lleva su hexadecimal escrito al lado.
    ================================================================== */
+
+/* El atributo hidden debe ganar siempre: sin esta regla, cualquier
+   componente con display propio (p. ej. .nota-control con display:flex)
+   seguiría visible, porque las reglas de autor pisan la regla
+   [hidden]{display:none} del navegador, que es de origen user-agent. */
+[hidden] {
+  display: none !important;
+}
 
 body {
   margin: 0;
@@ -17,7 +25,7 @@ body {
 
 /* El popup necesita un ancho fijo para no colapsar. */
 body.popup {
-  width: 340px;
+  width: 360px;
   padding: 14px 16px 16px;
   box-sizing: border-box;
 }
@@ -66,6 +74,78 @@ h2 {
   cursor: progress;
 }
 
+/* Controles de simulación (sprint 2) */
+.simulacion {
+  margin: 14px 0 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+}
+
+.simulacion legend {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0 4px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 0;
+}
+
+.campo label {
+  font-size: 0.8rem;
+  color: var(--texto-secundario);
+}
+
+.campo select {
+  font: inherit;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--borde);
+  background-color: var(--fondo);
+  color: var(--texto);
+}
+
+.campo-deslizador {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.campo-deslizador input[type="range"] {
+  flex: 1;
+  accent-color: var(--primario);
+}
+
+.campo-deslizador input[type="range"]:disabled {
+  opacity: 0.5;
+}
+
+/* Valor numérico de la severidad, siempre visible. */
+.campo-deslizador output {
+  min-width: 2.2em;
+  text-align: right;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9rem;
+}
+
+/* Nota explicativa junto a un control deshabilitado: icono + texto. */
+.nota-control {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: var(--texto-secundario);
+}
+
+.nota-control .estado-icono {
+  color: var(--primario);
+}
+
 /* Estado: icono de forma distinta + texto. El color del icono es un
    refuerzo, nunca el único canal. */
 .estado {
@@ -93,7 +173,17 @@ h2 {
   font-size: 0.8rem;
 }
 
-/* Lista de la paleta */
+/* Paleta en paralelo: columna original y columna simulada. */
+.paleta-encabezados {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--texto-secundario);
+  margin: 0 0 6px;
+}
+
 .paleta-lista {
   list-style: none;
   margin: 0;
@@ -101,17 +191,24 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 320px;
+  max-height: 300px;
   overflow-y: auto;
 }
 
-.color-item {
-  display: flex;
-  align-items: center;
+.color-fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   padding: 6px 8px;
   background-color: var(--superficie);
   border-radius: 6px;
+}
+
+.color-celda {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 /* La muestra es decorativa (aria-hidden): el hex de al lado la anuncia. */
@@ -137,5 +234,5 @@ h2 {
 
 .color-meta {
   color: var(--texto-secundario);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
 }

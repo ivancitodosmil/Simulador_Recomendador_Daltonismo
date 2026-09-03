@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Evaluador cromático de dashboards",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Evalúa la accesibilidad cromática de dashboards para usuarios con deficiencias en la percepción del color. Prototipo de trabajo de titulación. Todo el cálculo es local.",
   "action": {
     "default_title": "Evaluador cromático de dashboards",
@@ -14,12 +14,13 @@
     "service_worker": "src/background/service-worker.js",
     "type": "module"
   },
-  "permissions": ["activeTab", "scripting", "sidePanel"],
+  "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
   "web_accessible_resources": [
     {
       "resources": [
         "src/core/color/*.js",
-        "src/core/extraccion/*.js"
+        "src/core/extraccion/*.js",
+        "src/core/simulacion/*.js"
       ],
       "matches": ["<all_urls>"]
     }
