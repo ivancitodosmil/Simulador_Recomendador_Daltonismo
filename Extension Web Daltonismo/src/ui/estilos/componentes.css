@@ -1,16 +1,16 @@
 /* ==================================================================
-   Sprints 1-2 · Componentes de la interfaz (popup; reutilizables por
-   el panel lateral en sprints posteriores).
+   Componentes de la interfaz (panel lateral y popup auxiliar).
    Reglas del proyecto aplicadas aquí:
    - Foco visible de 2px en todo control (tokens --foco-*).
-   - Los estados llevan icono de forma distinta + texto, nunca solo color.
+   - Los ESTADOS llevan icono de forma distinta + texto, nunca solo
+     color; las notas informativas estáticas se presentan como texto
+     normal con filete lateral, sin icono.
    - Toda muestra de color lleva su hexadecimal escrito al lado.
    ================================================================== */
 
 /* El atributo hidden debe ganar siempre: sin esta regla, cualquier
-   componente con display propio (p. ej. .nota-control con display:flex)
-   seguiría visible, porque las reglas de autor pisan la regla
-   [hidden]{display:none} del navegador, que es de origen user-agent. */
+   componente con display propio seguiría visible, porque las reglas de
+   autor pisan la regla [hidden]{display:none} del navegador. */
 [hidden] {
   display: none !important;
 }
@@ -23,21 +23,9 @@ body {
   font-size: 14px;
 }
 
-/* El popup necesita un ancho fijo para no colapsar. */
-body.popup {
-  width: 360px;
-  padding: 14px 16px 16px;
-  box-sizing: border-box;
-}
-
 h1 {
   margin: 0 0 2px;
   font-size: 1.05rem;
-}
-
-h2 {
-  margin: 0 0 6px;
-  font-size: 0.95rem;
 }
 
 .descripcion {
@@ -52,7 +40,10 @@ h2 {
   outline-offset: 2px;
 }
 
-/* Botones */
+/* ------------------------------------------------------------------
+   Botones
+   ------------------------------------------------------------------ */
+
 .boton {
   font: inherit;
   padding: 8px 14px;
@@ -67,6 +58,12 @@ h2 {
   background-color: var(--primario);
   border-color: var(--primario);
   color: #FFFFFF;
+  font-weight: 600;
+}
+
+.boton--secundario {
+  padding: 4px 10px;
+  font-size: 0.8rem;
 }
 
 .boton:disabled {
@@ -74,18 +71,131 @@ h2 {
   cursor: progress;
 }
 
-/* Controles de simulación (sprint 2) */
-.simulacion {
-  margin: 14px 0 0;
-  padding: 10px 12px 12px;
-  border: 1px solid var(--borde);
-  border-radius: 8px;
+/* Botón a lo ancho del panel. */
+.boton--bloque {
+  display: block;
+  width: 100%;
 }
 
-.simulacion legend {
-  font-size: 0.85rem;
+/* Evaluación ya aplicada: acabado plano (el estado lo comunica el propio
+   cambio de texto del botón, no solo el color). */
+.boton--hecho {
+  background-color: var(--superficie);
+  border-color: var(--borde);
+  color: var(--correcto);
   font-weight: 600;
-  padding: 0 4px;
+}
+
+/* ------------------------------------------------------------------
+   Popup auxiliar
+   ------------------------------------------------------------------ */
+
+body.popup {
+  width: 340px;
+  padding: 14px 16px 16px;
+  box-sizing: border-box;
+}
+
+/* ------------------------------------------------------------------
+   Panel lateral: página gris suave con tarjetas blancas
+   ------------------------------------------------------------------ */
+
+body.panel {
+  background-color: var(--superficie);
+  padding: 18px 14px 28px;
+  box-sizing: border-box;
+}
+
+/* Cabecera centrada con el logotipo de la extensión. */
+.panel-cabecera {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.panel-logo {
+  display: block;
+  margin: 0 auto 8px;
+}
+
+body.panel h1 {
+  font-size: 1.25rem;
+  margin: 0 0 4px;
+}
+
+.panel-cabecera .descripcion {
+  max-width: 44ch;
+  margin: 0 auto;
+}
+
+body.panel main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Tarjeta: unidad visual de cada sección. */
+.tarjeta {
+  background-color: var(--fondo);
+  border-radius: 12px;
+  padding: 14px 16px 16px;
+}
+
+body.panel h2 {
+  font-size: 1rem;
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--superficie);
+}
+
+body.panel h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  margin: 16px 0 8px;
+}
+
+/* Insignia: dato normativo compacto junto a un título (sin guiones). */
+.insignia {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--texto-secundario);
+  background-color: var(--superficie);
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.descripcion--centrada {
+  text-align: center;
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------
+   Controles de simulación
+   ------------------------------------------------------------------ */
+
+fieldset.simulacion {
+  border: none;
+  margin: 0;
+}
+
+/* La legend nativa se dibuja sobre la línea del borde del fieldset y, sin
+   borde, queda fuera de la tarjeta. El float la devuelve al flujo normal
+   del contenido, dentro del fondo blanco, sin perder la semántica. */
+fieldset.simulacion legend {
+  float: left;
+  width: 100%;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0 0 8px;
+  margin: 0 0 10px;
+  border-bottom: 1px solid var(--superficie);
+}
+
+fieldset.simulacion legend + * {
+  clear: both;
 }
 
 .campo {
@@ -132,27 +242,33 @@ h2 {
   font-size: 0.9rem;
 }
 
-/* Nota explicativa junto a un control deshabilitado: icono + texto. */
-.nota-control {
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
-  margin: 8px 0 0;
-  font-size: 0.78rem;
-  color: var(--texto-secundario);
+.campo--en-linea {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
 }
 
-.nota-control .estado-icono {
-  color: var(--primario);
+.campo--en-linea input[type="number"] {
+  font: inherit;
+  width: 5em;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--borde);
+  background-color: var(--fondo);
+  color: var(--texto);
 }
 
-/* Estado: icono de forma distinta + texto. El color del icono es un
-   refuerzo, nunca el único canal. */
+/* ------------------------------------------------------------------
+   Estados y notas
+   ------------------------------------------------------------------ */
+
+/* Estado dinámico: icono de forma distinta + texto (regla del proyecto). */
 .estado {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin: 12px 0;
+  margin: 0;
   font-size: 0.85rem;
   min-height: 1.2em;
 }
@@ -167,20 +283,59 @@ h2 {
 .estado--error .estado-icono { color: var(--error); }
 .estado--info .estado-icono { color: var(--primario); }
 
+/* Aviso (estado de advertencia persistente): conserva icono + texto. */
+.aviso {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--fondo);
+  font-size: 0.8rem;
+  color: var(--texto);
+}
+
+.aviso .estado-icono { color: var(--advertencia); }
+
+/* Nota informativa estática: texto normal sobre fondo suave, sin icono. */
+.nota-metodo {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background-color: var(--superficie);
+  font-size: 0.78rem;
+  color: var(--texto-secundario);
+}
+
+.nota-control {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background-color: var(--superficie);
+  font-size: 0.76rem;
+  color: var(--texto-secundario);
+}
+
 .niveles {
   margin: 0 0 10px;
   color: var(--texto-secundario);
   font-size: 0.8rem;
 }
 
-/* Paleta en paralelo: columna original y columna simulada. */
+/* ------------------------------------------------------------------
+   Muestras de color y paleta
+   ------------------------------------------------------------------ */
+
 .paleta-encabezados {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--texto-secundario);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
   margin: 0 0 6px;
 }
 
@@ -191,8 +346,6 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 300px;
-  overflow-y: auto;
 }
 
 .color-fila {
@@ -209,6 +362,13 @@ h2 {
   align-items: center;
   gap: 8px;
   min-width: 0;
+}
+
+/* Celda de paleta con metadatos debajo de la muestra. */
+.color-celda--vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
 }
 
 /* La muestra es decorativa (aria-hidden): el hex de al lado la anuncia. */
@@ -235,4 +395,177 @@ h2 {
 .color-meta {
   color: var(--texto-secundario);
   font-size: 0.72rem;
+}
+
+/* ------------------------------------------------------------------
+   Pares evaluados
+   ------------------------------------------------------------------ */
+
+.lista-pares {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.par-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 8px 10px;
+  background-color: var(--superficie);
+  border-radius: 8px;
+}
+
+.par-colores {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.par-sobre {
+  color: var(--texto-secundario);
+  font-size: 0.78rem;
+}
+
+.par-cifras {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 0.85rem;
+}
+
+/* Veredicto textual con icono de forma distinta. */
+.estado-par {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.estado-par--cumple .estado-icono { color: var(--correcto); }
+.estado-par--incumple .estado-icono { color: var(--error); }
+
+/* Par conflictivo con detalle desplegable en la propia fila. */
+.detalle-plegable {
+  width: 100%;
+}
+
+.detalle-plegable summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.detalle-plegable summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Indicador visual del desplegable (el estado expandido/contraído lo
+   anuncia el propio summary a los lectores de pantalla). */
+.detalle-plegable summary::after {
+  content: "▾ ver detalle";
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--primario);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.detalle-plegable[open] summary::after {
+  content: "▴ ocultar detalle";
+}
+
+.detalle-cuerpo {
+  width: 100%;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--fondo);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+}
+
+.detalle-cuerpo p {
+  margin: 0;
+}
+
+.detalle-linea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ------------------------------------------------------------------
+   Matriz de distinguibilidad
+   ------------------------------------------------------------------ */
+
+.matriz-envoltorio {
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.matriz {
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.matriz caption {
+  text-align: left;
+  padding-bottom: 6px;
+}
+
+.matriz th,
+.matriz td {
+  border: 1px solid var(--superficie);
+  padding: 4px 6px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.matriz thead th,
+.matriz tbody th {
+  background-color: var(--superficie);
+  text-align: left;
+  font-weight: 600;
+}
+
+.celda-diagonal {
+  background-color: var(--superficie);
+}
+
+/* Celda conflictiva: botón real, operable con teclado. */
+.celda-conflicto {
+  font: inherit;
+  font-weight: 700;
+  color: var(--error);
+  background: none;
+  border: 1px solid var(--error);
+  border-radius: 4px;
+  padding: 2px 5px;
+  cursor: pointer;
+}
+
+.leyenda-series {
+  margin: 0;
+  padding: 0 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.82rem;
+}
+
+.leyenda-series li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }

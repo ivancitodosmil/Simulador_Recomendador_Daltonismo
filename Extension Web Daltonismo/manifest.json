@@ -1,11 +1,22 @@
 {
   "manifest_version": 3,
   "name": "Evaluador cromático de dashboards",
-  "version": "0.2.0",
+  "version": "0.3.2",
   "description": "Evalúa la accesibilidad cromática de dashboards para usuarios con deficiencias en la percepción del color. Prototipo de trabajo de titulación. Todo el cálculo es local.",
+  "icons": {
+    "16": "assets/iconos/icono-16.png",
+    "32": "assets/iconos/icono-32.png",
+    "48": "assets/iconos/icono-48.png",
+    "128": "assets/iconos/icono-128.png"
+  },
   "action": {
     "default_title": "Evaluador cromático de dashboards",
-    "default_popup": "src/ui/popup/popup.html"
+    "default_icon": {
+      "16": "assets/iconos/icono-16.png",
+      "32": "assets/iconos/icono-32.png",
+      "48": "assets/iconos/icono-48.png",
+      "128": "assets/iconos/icono-128.png"
+    }
   },
   "side_panel": {
     "default_path": "src/ui/panel/panel.html"
@@ -15,12 +26,14 @@
     "type": "module"
   },
   "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
+  "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [
     {
       "resources": [
         "src/core/color/*.js",
         "src/core/extraccion/*.js",
-        "src/core/simulacion/*.js"
+        "src/core/simulacion/*.js",
+        "src/core/evaluacion/*.js"
       ],
       "matches": ["<all_urls>"]
     }

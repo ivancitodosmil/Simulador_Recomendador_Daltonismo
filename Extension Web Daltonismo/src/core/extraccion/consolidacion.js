@@ -7,8 +7,9 @@
 // ------------------------------------------------------------------
 
 import { parseCssColor, rgbToHex, rgbToLab } from "../color/conversion.js";
+import { ciede2000 } from "../color/diferencia.js";
 
-// Umbral de agrupación: por debajo de este ΔE dos tonos se consideran el
+// Umbral de agrupación: por debajo de este ΔE00 dos tonos se consideran el
 // mismo color (variaciones de redondeo o antialiasing).
 const GROUPING_DELTA_E = 2.5;
 
@@ -16,17 +17,17 @@ const GROUPING_DELTA_E = 2.5;
 const MAX_EXAMPLES_PER_COLOR = 3;
 const MAX_ELEMENTS_PER_COLOR = 50;
 
-/**
- * Distancia euclídea en CIELAB (ΔE*ab 1976), suficiente para agrupar tonos
- * casi idénticos. La comparación perceptual fina (CIEDE2000) corresponde a
- * core/color/diferencia.js, reservado para un sprint posterior.
- */
-function deltaE76(labA, labB) {
-  const dl = labA.l - labB.l;
-  const da = labA.a - labB.a;
-  const db = labA.b - labB.b;
-  return Math.sqrt(dl * dl + da * da + db * db);
-}
+// DECISIÓN (Sprint 3, punto 8): la agrupación usaba ΔE*ab 1976 porque
+// diferencia.js aún no existía. Se UNIFICA con CIEDE2000 por tres razones:
+// (1) consistencia: toda la cadena (consolidación, distinguibilidad,
+// futura recomendación) mide con la misma métrica perceptual; (2) costo
+// despreciable: la agrupación procesa cientos de entradas por evaluación
+// y CIEDE2000 sigue costando microsegundos por par; (3) el umbral 2.5 se
+// conserva y mejora su semántica: en ΔE00 queda pegado a la diferencia
+// apenas perceptible clásica (≈2.3) y, para tonos saturados, CIEDE2000
+// comprime las diferencias de croma (SC), con lo que agrupa MÁS los restos
+// de antialiasing de un mismo color sin llegar a fusionar series
+// legítimamente distintas (verificado con las pruebas del Sprint 1).
 
 /** Compone un color con alfa parcial sobre fondo blanco. */
 function compositeOverWhite({ r, g, b, a }) {
@@ -59,7 +60,7 @@ function groupByPerceptualDistance(rawEntries) {
 
   for (const entry of sorted) {
     const lab = rgbToLab(entry.rgb);
-    let group = groups.find((g) => deltaE76(g.lab, lab) < GROUPING_DELTA_E);
+    let group = groups.find((g) => ciede2000(g.lab, lab) < GROUPING_DELTA_E);
     if (!group) {
       // El primer miembro (el más frecuente) queda como representante.
       group = {
