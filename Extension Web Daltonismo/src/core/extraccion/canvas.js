@@ -178,7 +178,16 @@ export function extractCanvasColors(root = document) {
         failed += 1;
         continue;
       }
-      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      // Se lee desde una copia propia creada con willReadFrequently: leer
+      // directamente del canvas de la página dispara la advertencia
+      // "Canvas2D: multiple readback operations..." de Chrome, porque su
+      // contexto lo creó la librería de gráficos sin esa bandera y no puede
+      // cambiarse a posteriori. Copiar un canvas contaminado por CORS
+      // contamina también la copia, así que el SecurityError se conserva.
+      const readCopy = new OffscreenCanvas(canvas.width, canvas.height);
+      const readContext = readCopy.getContext("2d", { willReadFrequently: true });
+      readContext.drawImage(canvas, 0, 0);
+      const imageData = readContext.getImageData(0, 0, canvas.width, canvas.height);
       const pixels = samplePixels(imageData);
       if (!pixels.length) continue;
       const quantized = discardRareTones(medianCutQuantize(pixels), pixels.length);

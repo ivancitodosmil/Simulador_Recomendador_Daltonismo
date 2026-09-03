@@ -1,6 +1,129 @@
-<!-- ------------------------------------------------------------------
-  Panel lateral (side panel): superficie principal de resultados,
-  simulaciones, recomendaciones y reporte.
-  Estado: reservado. Se implementará en el sprint que lo cubra según la
-  planificación; no contiene marcado a propósito.
-------------------------------------------------------------------- -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Evaluador cromático de dashboards</title>
+  <link rel="stylesheet" href="../estilos/tokens.css">
+  <link rel="stylesheet" href="../estilos/componentes.css">
+</head>
+<body class="panel">
+  <header class="panel-cabecera">
+    <img class="panel-logo" src="../../../assets/iconos/icono-128.png" alt="" width="44" height="44">
+    <h1>Evaluador cromático</h1>
+    <p class="descripcion">Extrae la paleta del dashboard de la pestaña activa, simula cómo la percibe una persona con daltonismo y evalúa su accesibilidad.</p>
+  </header>
+
+  <main>
+    <!-- Controles de simulación (sprint 2), integrados en el panel. -->
+    <fieldset class="simulacion tarjeta">
+      <legend>Simulación de daltonismo</legend>
+
+      <div class="campo">
+        <label for="deficiency-select">Tipo de deficiencia</label>
+        <select id="deficiency-select"
+                aria-label="Tipo de deficiencia de percepción del color a simular">
+          <option value="none">Ninguna (vista original)</option>
+          <option value="protanopia">Protanopía</option>
+          <option value="deuteranopia">Deuteranopía</option>
+          <option value="tritanopia">Tritanopía</option>
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="severity-slider">Severidad</label>
+        <div class="campo-deslizador">
+          <input type="range" id="severity-slider" min="0" max="1" step="0.1" value="1"
+                 aria-label="Severidad de la simulación, de cero a uno en pasos de una décima">
+          <!-- Valor numérico siempre visible junto al control. -->
+          <output id="severity-value" for="severity-slider">1,0</output>
+        </div>
+      </div>
+
+      <!-- Nota visible SOLO al seleccionar tritanopía. -->
+      <p id="severity-note" class="nota-control" hidden>
+        La severidad se deshabilita en tritanopía: el método de Brettel (1997) modela la
+        dicromatopsia completa y no admite graduación.
+      </p>
+    </fieldset>
+
+    <!-- Botón único de evaluación, debajo de la simulación. -->
+    <button id="evaluate-button" class="boton boton--primario boton--bloque" type="button"
+            aria-label="Extraer la paleta de colores y evaluar la página actual">
+      Extraer paleta y evaluar
+    </button>
+
+    <!-- Estado con icono de forma distinta + texto: nunca solo color. -->
+    <p id="panel-status" class="estado" role="status" aria-live="polite"></p>
+
+    <!-- Aviso de evaluación aproximada (nivel 3 de extracción). -->
+    <p id="approximate-notice" class="aviso" hidden>
+      <span class="estado-icono" aria-hidden="true">▲</span>
+      <span>Evaluación aproximada: parte de la paleta proviene de la captura de pantalla
+      (nivel 3) y perdió la relación color-elemento, así que el contraste solo cubre los
+      colores con elemento identificado.</span>
+    </p>
+
+    <p id="empty-state" class="descripcion descripcion--centrada">
+      Aún no hay ninguna evaluación de esta pestaña. Pulsa «Extraer paleta y evaluar».
+    </p>
+
+    <section id="palette-section" class="tarjeta" aria-labelledby="palette-summary" hidden>
+      <h2 id="palette-summary">Paleta detectada</h2>
+      <p id="levels" class="niveles"></p>
+      <!-- Paleta original y simulada en paralelo; cada muestra con su hex al lado. -->
+      <div class="paleta-encabezados" aria-hidden="true">
+        <span>Original</span>
+        <span id="simulated-header">Simulada</span>
+      </div>
+      <ul id="palette-list" class="paleta-lista"></ul>
+    </section>
+
+    <section id="contrast-section" class="tarjeta" aria-labelledby="contrast-heading" hidden>
+      <h2 id="contrast-heading">Contraste WCAG 2.1</h2>
+
+      <!-- Origen de cada cifra: sin esta nota, contraste y ΔE00 parecerían medir lo mismo. -->
+      <p class="nota-metodo">
+        El contraste se calcula sobre los colores declarados en la página; la diferencia de
+        color ΔE00, sobre esos colores transformados por la simulación seleccionada.
+        Son magnitudes distintas sobre entradas distintas.
+      </p>
+
+      <h3>Criterio 1.4.3 · Texto sobre fondo
+        <span class="insignia">umbral 4,5:1 · texto grande 3:1</span>
+      </h3>
+      <ul id="text-pairs" class="lista-pares"></ul>
+
+      <h3>Criterio 1.4.11 · Objetos gráficos sobre su fondo
+        <span class="insignia">umbral 3:1</span>
+      </h3>
+      <ul id="graphic-pairs" class="lista-pares"></ul>
+    </section>
+
+    <section id="distinguishability-section" class="tarjeta" aria-labelledby="distinguishability-heading" hidden>
+      <h2 id="distinguishability-heading">Distinguibilidad entre series</h2>
+      <p id="distinguishability-config" class="niveles"></p>
+
+      <div class="campo campo--en-linea">
+        <label for="threshold-input">Umbral de confusión ΔE00</label>
+        <input type="number" id="threshold-input" min="1" max="30" step="0.5" value="10"
+               aria-label="Umbral de diferencia de color por debajo del cual dos series se consideran confundibles">
+      </div>
+
+      <div id="matrix-container" class="matriz-envoltorio" tabindex="0"
+           role="group" aria-label="Matriz de diferencias de color CIEDE2000 entre series simuladas"></div>
+
+      <h3>Series comparadas
+        <span class="insignia">original → simulada</span>
+      </h3>
+      <ol id="series-legend" class="leyenda-series"></ol>
+
+      <h3>Pares conflictivos
+        <span class="insignia">detalle desplegable en cada par</span>
+      </h3>
+      <ul id="conflict-list" class="lista-pares"></ul>
+    </section>
+  </main>
+
+  <script type="module" src="panel.js"></script>
+</body>
+</html>

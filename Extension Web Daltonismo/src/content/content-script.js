@@ -15,10 +15,15 @@
 
   let extractionModulesPromise = null;
   let filterModulePromise = null;
+  let wcagModulePromise = null;
 
   // Contenedor resuelto en la última extracción: la simulación lo reutiliza
   // para aplicar el filtro exactamente sobre la misma área analizada.
   let cachedContainer = null;
+
+  // Observaciones color-elemento de la última extracción: la evaluación de
+  // contraste (sprint 3) las necesita con sus referencias vivas.
+  let lastObservations = [];
 
   /** Carga perezosa (y única) de los módulos de extracción. */
   function loadExtractionModules() {
@@ -40,6 +45,14 @@
     return filterModulePromise;
   }
 
+  /** Carga perezosa del módulo de evaluación WCAG (sprint 3). */
+  function loadWcagModule() {
+    if (!wcagModulePromise) {
+      wcagModulePromise = import(chrome.runtime.getURL("src/core/evaluacion/contraste-wcag.js"));
+    }
+    return wcagModulePromise;
+  }
+
   /** Ejecuta la extracción completa dentro de la página (sprint 1). */
   async function extractPalette() {
     const startTime = performance.now();
@@ -47,6 +60,7 @@
 
     const domResult = domSvg.extractDomSvgColors();
     cachedContainer = domResult.container;
+    lastObservations = domResult.observations;
 
     let canvasResult = { entries: [], canvasTotal: 0, canvasFailed: 0 };
     try {
@@ -87,6 +101,23 @@
     };
   }
 
+  /**
+   * Evaluación completa (sprint 3): extracción + contraste WCAG sobre los
+   * colores declarados, con las relaciones color-elemento aún vivas.
+   * La distinguibilidad la calcula el service worker con la paleta simulada.
+   */
+  async function runFullEvaluation() {
+    const extraction = await extractPalette();
+    let contrast = { text: [], graphics: [] };
+    try {
+      const wcagModule = await loadWcagModule();
+      contrast = wcagModule.evaluateWcagContrast(lastObservations);
+    } catch (error) {
+      contrast = { text: [], graphics: [], error: String(error) };
+    }
+    return { ...extraction, contrast };
+  }
+
   /** Aplica el filtro de simulación sobre el contenedor (sprint 2). */
   async function applySimulation(config) {
     const filterModule = await loadFilterModule();
@@ -111,6 +142,12 @@
         .then(sendResponse)
         .catch((error) => sendResponse({ ok: false, error: "extraction-failed", detail: String(error) }));
       return true; // respuesta asíncrona
+    }
+    if (message && message.type === "RUN_EVALUATION") {
+      runFullEvaluation()
+        .then(sendResponse)
+        .catch((error) => sendResponse({ ok: false, error: "extraction-failed", detail: String(error) }));
+      return true;
     }
     if (message && message.type === "APPLY_SIMULATION") {
       applySimulation(message.config)
