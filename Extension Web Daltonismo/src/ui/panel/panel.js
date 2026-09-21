@@ -18,6 +18,7 @@ import {
   simulateForConfig,
   DEFAULT_CONFUSION_THRESHOLD
 } from "../../core/evaluacion/distinguibilidad.js";
+import { recommendPalette } from "../../core/recomendacion/algoritmo.js";
 
 const evaluateButton = document.getElementById("evaluate-button");
 const statusElement = document.getElementById("panel-status");
@@ -41,6 +42,15 @@ const thresholdInput = document.getElementById("threshold-input");
 const matrixContainer = document.getElementById("matrix-container");
 const seriesLegend = document.getElementById("series-legend");
 const conflictList = document.getElementById("conflict-list");
+const recommendationSection = document.getElementById("recommendation-section");
+const recommendationStatus = document.getElementById("recommendation-status");
+const recommendationBody = document.getElementById("recommendation-body");
+const recommendationReason = document.getElementById("recommendation-reason");
+const recommendationMapping = document.getElementById("recommendation-mapping");
+const familySelect = document.getElementById("family-select");
+const seriesSelectionList = document.getElementById("series-selection");
+const previewToggle = document.getElementById("preview-toggle");
+const previewNote = document.getElementById("preview-note");
 
 const STATUS_ICONS = { info: "ℹ", ok: "✔", warning: "▲", error: "✖" };
 
@@ -85,7 +95,14 @@ const state = {
   series: [],
   simulatedRgbs: [],
   distSimulated: null,
-  distOriginal: null
+  distOriginal: null,
+  // Recomendación de paleta (sprint 4).
+  family: "qualitative",
+  recommendation: null,
+  previewActive: false,
+  // Series consideradas: hex → incluido en la recomendación (ajuste S4).
+  seriesSelection: new Map(),
+  selectionSource: null
 };
 
 /** Número con coma decimal. */
@@ -93,17 +110,27 @@ function formatNumber(value, decimals = 2) {
   return Number(value).toFixed(decimals).replace(".", ",");
 }
 
-/** Estado con icono de forma distinta + texto. */
-function setStatus(kind, text) {
-  statusElement.className = "estado estado--" + kind;
-  statusElement.replaceChildren();
+/** Pinta un estado (icono de forma distinta + texto) en el elemento dado. */
+function renderStatusInto(element, kind, text) {
+  element.className = "estado estado--" + kind;
+  element.replaceChildren();
   const icon = document.createElement("span");
   icon.className = "estado-icono";
   icon.setAttribute("aria-hidden", "true");
   icon.textContent = STATUS_ICONS[kind] || STATUS_ICONS.info;
   const message = document.createElement("span");
   message.textContent = text;
-  statusElement.append(icon, message);
+  element.append(icon, message);
+}
+
+/** Estado principal del panel. */
+function setStatus(kind, text) {
+  renderStatusInto(statusElement, kind, text);
+}
+
+/** Estado del bloque de recomendación (cada desenlace con presentación propia). */
+function setRecommendationStatus(kind, text) {
+  renderStatusInto(recommendationStatus, kind, text);
 }
 
 /**
@@ -211,6 +238,18 @@ async function loadStoredSimulation() {
     }
   } catch (error) {
     // Se mantienen los valores por defecto.
+  }
+}
+
+/** Recupera la familia de paleta seleccionada (paso 1 del algoritmo). */
+async function loadStoredFamily() {
+  try {
+    const stored = await chrome.storage.local.get(["paletteFamily"]);
+    if (stored.paletteFamily === "sequential" || stored.paletteFamily === "qualitative") {
+      state.family = stored.paletteFamily;
+    }
+  } catch (error) {
+    // Valor por defecto: cualitativa.
   }
 }
 
@@ -531,6 +570,290 @@ function renderConflicts() {
   }
 }
 
+// ------------------------------------------------------------------
+// Recomendación de paleta (sprint 4)
+// ------------------------------------------------------------------
+
+/** Restablece el conmutador de previsualización (sin tocar la página). */
+function resetPreviewUi() {
+  state.previewActive = false;
+  previewToggle.checked = false;
+}
+
+/**
+ * Fondo de PÁGINA: la entrada con rol fondo cuyos elementos de origen son
+ * body o html (la observación sintética blanca también apunta a body).
+ * NUNCA se elige por peso: en un panel con muchas barras y chips de
+ * leyenda, una serie puede acumular más peso de fondo que el blanco de la
+ * página sin ser por ello el fondo del tablero (ajuste fino del Sprint 4).
+ */
+function pageBackgroundEntry() {
+  const palette = state.evaluation && state.evaluation.ok ? state.evaluation.palette || [] : [];
+  // Los descriptores de origen son tag(+#id|.clase): "body", "body.tema"…
+  const isPageElement = (example) => /^(body|html)($|[.#])/.test(example);
+  return (
+    palette.find(
+      (color) =>
+        color.roles.includes("background") && (color.examples || []).some(isPageElement)
+    ) || null
+  );
+}
+
+/** Fondo dominante para la revalidación de contraste: el fondo de página;
+    como respaldo, el rol fondo de mayor peso; blanco en último término. */
+function dominantBackgroundRgb() {
+  const pageBackground = pageBackgroundEntry();
+  if (pageBackground) return pageBackground.rgb;
+  const palette = state.evaluation && state.evaluation.ok ? state.evaluation.palette || [] : [];
+  const backgrounds = palette.filter((color) => color.roles.includes("background"));
+  return backgrounds.length ? backgrounds[0].rgb : { r: 255, g: 255, b: 255 };
+}
+
+// Descriptores de elementos estructurales de ejes y cuadrícula: piezas de
+// D3/SVG que portan color pero no son categorías de datos. Coinciden con
+// los "examples" que produce la consolidación: contenedores puros (svg, g),
+// la línea de dominio del eje (path.domain), las líneas de tick (line) y
+// cualquier clase de eje/cuadrícula (.tick, .domain, .eje, .grid, .axis).
+const STRUCTURAL_EXAMPLE_PATTERN = /^(svg|g|line|path\.domain)$|\.(domain|tick|eje|grid|axis)($|\b)/i;
+
+/**
+ * Criterio de selección POR DEFECTO de una serie (ajuste del Sprint 4):
+ * la casilla nace DESMARCADA cuando hay evidencia de que el color es
+ * estructural y no una categoría de datos:
+ *   a) su rol combina serie con TEXTO, o combina serie con FONDO siendo
+ *      además el fondo DOMINANTE del tablero (el blanco de página que a
+ *      la vez traza los sectores del pastel). El matiz "dominante" es
+ *      deliberado: los chips de leyenda aportan rol de fondo al mismo
+ *      hex de su serie, y desmarcar por cualquier fondo eliminaría a
+ *      todas las series con leyenda; un fondo puntual es evidencia de
+ *      categoría de datos, no de estructura.
+ *   b) TODOS sus elementos de origen conocidos son piezas estructurales
+ *      de ejes o cuadrícula (patrón de arriba: svg/g puros, path.domain,
+ *      line de ticks, clases .tick/.eje/.grid/.axis).
+ * En el resto nace MARCADA. Los colores sin elementos de origen (los
+ * muestreados de canvas, con examples vacío) nacen marcados porque no
+ * hay evidencia estructural: el negro de Okabe-Ito en un gráfico canvas
+ * es una serie de datos legítima.
+ */
+function defaultSeriesSelected(entry, dominantBackgroundHex) {
+  if (entry.roles.includes("text")) return false;
+  if (entry.roles.includes("background") && entry.hex === dominantBackgroundHex) return false;
+  const examples = entry.examples || [];
+  if (examples.length && examples.every((example) => STRUCTURAL_EXAMPLE_PATTERN.test(example))) {
+    return false;
+  }
+  return true;
+}
+
+/** ¿La serie está incluida en la recomendación? */
+function isSeriesSelected(hex) {
+  return state.seriesSelection.get(hex) !== false;
+}
+
+/** Casilla de una serie: operable con teclado, con aria-label y hex escrito. */
+function buildSeriesCheckbox(entry) {
+  const item = document.createElement("li");
+  const label = document.createElement("label");
+  label.className = "casilla-serie";
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = isSeriesSelected(entry.hex);
+  checkbox.setAttribute(
+    "aria-label",
+    "Incluir el color " + entry.hex + " como serie de datos en la recomendación"
+  );
+  checkbox.addEventListener("change", () => {
+    state.seriesSelection.set(entry.hex, checkbox.checked);
+    // La selección alimenta únicamente a la recomendación: la matriz de
+    // distinguibilidad sigue mostrando todas las series.
+    renderRecommendation();
+  });
+
+  const swatch = document.createElement("span");
+  swatch.className = "muestra-color";
+  swatch.style.backgroundColor = entry.hex;
+  swatch.setAttribute("aria-hidden", "true");
+
+  const code = document.createElement("code");
+  code.className = "hex";
+  code.textContent = entry.hex;
+
+  label.append(checkbox, swatch, code);
+  item.append(label);
+  return item;
+}
+
+/**
+ * Reconstruye la selección (con sus valores por defecto) y sus casillas
+ * SOLO cuando llega una evaluación nueva; los cambios manuales del
+ * usuario sobreviven a los cambios de tipo, severidad, umbral o familia.
+ */
+function ensureSeriesSelection() {
+  if (state.selectionSource === state.evaluation) return;
+  state.selectionSource = state.evaluation;
+  state.seriesSelection = new Map();
+  seriesSelectionList.replaceChildren();
+
+  // Solo el fondo de página (body/html) desmarca por la regla serie+fondo;
+  // un rol de fondo que venga de elementos puntuales (chips de leyenda,
+  // tarjetas) no desactiva la serie: esos colores nacen marcados.
+  const pageBackground = pageBackgroundEntry();
+  const dominantBackgroundHex = pageBackground ? pageBackground.hex : null;
+
+  for (const entry of state.series) {
+    state.seriesSelection.set(entry.hex, defaultSeriesSelected(entry, dominantBackgroundHex));
+    seriesSelectionList.append(buildSeriesCheckbox(entry));
+  }
+}
+
+/** Envía a la página la previsualización (aplicar) o su retirada. */
+async function sendPreview(active) {
+  const recommendation = state.recommendation;
+  if (active && (!recommendation || recommendation.outcome !== "proposal")) return;
+  const message = active
+    ? {
+        type: "PREVIEW_PALETTE",
+        mapping: recommendation.mapping.map((entry) => ({
+          fromHex: entry.originalHex,
+          toHex: entry.proposedHex
+        }))
+      }
+    : { type: "CLEAR_PREVIEW" };
+  try {
+    const response = await chrome.runtime.sendMessage(message);
+    if (!active) {
+      state.previewActive = false;
+      setStatus("ok", "Previsualización retirada: la página recuperó sus colores originales.");
+      return;
+    }
+    if (response && response.ok) {
+      state.previewActive = true;
+      const extra = response.entriesWithoutElements
+        ? " · " + response.entriesWithoutElements + " colores sin elementos recoloreables (canvas)"
+        : "";
+      setStatus("ok", "Previsualización aplicada: " + response.recolored + " propiedades recoloreadas" + extra + ".");
+    } else {
+      resetPreviewUi();
+      setStatus(
+        "warning",
+        response && response.error === "no-registry"
+          ? "La página ya no conserva el registro color-elemento (¿se recargó?). Vuelve a pulsar «Extraer paleta y evaluar»."
+          : "No se pudo aplicar la previsualización sobre esta página."
+      );
+    }
+  } catch (error) {
+    resetPreviewUi();
+    setStatus("warning", "No se pudo comunicar con la página para la previsualización.");
+  }
+}
+
+/** Apaga la previsualización si estaba activa (cambio de desenlace). */
+function stopPreviewIfActive() {
+  if (state.previewActive) {
+    sendPreview(false);
+  }
+  resetPreviewUi();
+}
+
+/**
+ * Calcula y pinta el bloque de recomendación con los datos ya evaluados
+ * (sin repetir la evaluación). Tres desenlaces con presentación propia:
+ * propuesta, cumplimiento sin reemplazo y aviso de rediseño.
+ */
+function renderRecommendation() {
+  const evaluation = state.evaluation;
+  if (!evaluation || !evaluation.ok) {
+    recommendationSection.hidden = true;
+    resetPreviewUi();
+    return;
+  }
+  recommendationSection.hidden = false;
+  familySelect.value = state.family;
+  ensureSeriesSelection();
+
+  const contrast = evaluation.contrast || { text: [], graphics: [] };
+  const graphicsFailures = (contrast.graphics || []).filter((group) => !group.passes).length;
+
+  // Entrada del algoritmo: solo las series marcadas como consideradas.
+  const selectedSeries = state.series.filter((color) => isSeriesSelected(color.hex));
+
+  const result = recommendPalette({
+    seriesColors: selectedSeries.map((color) => ({ hex: color.hex, rgb: color.rgb })),
+    backgroundRgb: dominantBackgroundRgb(),
+    deficiencyType: state.simulation.type,
+    family: state.family,
+    threshold: state.threshold,
+    originalGraphicsFailures: graphicsFailures
+  });
+  state.recommendation = result;
+  recommendationBody.hidden = true;
+
+  if (result.outcome === "no-deficiency") {
+    stopPreviewIfActive();
+    setRecommendationStatus("info", "Selecciona un tipo de deficiencia en el bloque de simulación para generar la recomendación.");
+    return;
+  }
+  if (result.outcome === "insufficient-series") {
+    stopPreviewIfActive();
+    setRecommendationStatus(
+      "info",
+      state.series.length >= 2
+        ? "Marca al menos dos series consideradas para recomendar una paleta."
+        : "Se necesitan al menos dos colores de serie para recomendar una paleta."
+    );
+    return;
+  }
+  if (result.outcome === "compliant") {
+    stopPreviewIfActive();
+    setRecommendationStatus(
+      "ok",
+      "La paleta original cumple bajo " + SIMULATION_LABELS[result.deficiencyType] +
+        " a severidad máxima: sin fallos de contraste en los pares evaluados y ΔE00 mínimo " +
+        formatNumber(result.minDelta) + " (umbral " + formatNumber(result.threshold, 1) +
+        "). No se propone reemplazo."
+    );
+    return;
+  }
+  if (result.outcome === "redesign") {
+    stopPreviewIfActive();
+    const familyLabel = result.family === "sequential" ? "secuencial" : "categórico";
+    const text = result.exhausted
+      ? "Ningún esquema " + familyLabel + " acreditado superó la revalidación con " + result.seriesCount +
+        " series y umbral " + formatNumber(state.threshold, 1) + " (se probaron " + result.attempts.length +
+        "). Se recomienda rediseñar: reducir series, agrupar categorías o reforzar con etiquetas y formas."
+      : "El dashboard tiene " + result.seriesCount + " series y el mayor esquema " + familyLabel +
+        " acreditado para " + SIMULATION_LABELS[result.deficiencyType] + " dispone de " + result.maxAvailable +
+        " colores. Se recomienda rediseñar: reducir series, agrupar categorías o reforzar con etiquetas y formas.";
+    setRecommendationStatus("warning", text);
+    return;
+  }
+
+  // Propuesta con esquema elegido: documenta qué se eligió y por qué.
+  setRecommendationStatus("ok", "Propuesta generada con el esquema " + result.scheme.name + ".");
+  recommendationReason.textContent =
+    "Elegido por ser el primer esquema acreditado para " + SIMULATION_LABELS[result.deficiencyType] +
+    " con capacidad " + result.scheme.size + " ≥ " + result.mapping.length + " series que superó la revalidación: " +
+    result.revalidation.iterations + (result.revalidation.iterations === 1 ? " esquema probado" : " esquemas probados") +
+    ", " + result.revalidation.swaps + (result.revalidation.swaps === 1 ? " sustitución" : " sustituciones") +
+    ", ΔE00 mínimo revalidado " + formatNumber(result.revalidation.minDelta) + ".";
+
+  recommendationMapping.replaceChildren();
+  for (const entry of result.mapping) {
+    const row = document.createElement("li");
+    row.className = "color-fila";
+    row.append(colorChip(entry.originalHex), colorChip(entry.proposedHex));
+    recommendationMapping.append(row);
+  }
+  previewNote.hidden = !(evaluation.stats && evaluation.stats.canvasTotal > 0);
+  recommendationBody.hidden = false;
+
+  // Con la previsualización activa, la nueva propuesta se re-aplica.
+  if (state.previewActive) {
+    sendPreview(true);
+  }
+}
+
 /** Recalcula y pinta la sección de distinguibilidad con el estado vigente. */
 function renderDistinguishability() {
   const palette = state.evaluation && state.evaluation.ok ? state.evaluation.palette || [] : [];
@@ -544,6 +867,7 @@ function renderDistinguishability() {
     state.distSimulated = null;
     state.distOriginal = null;
     updateBadge();
+    renderRecommendation();
     return;
   }
 
@@ -566,6 +890,7 @@ function renderDistinguishability() {
   renderLegend();
   renderConflicts();
   updateBadge();
+  renderRecommendation();
 }
 
 // ------------------------------------------------------------------
@@ -581,6 +906,8 @@ function render() {
     contrastSection.hidden = true;
     distSection.hidden = true;
     approximateNotice.hidden = true;
+    recommendationSection.hidden = true;
+    resetPreviewUi();
     setEvaluateButtonState(false);
     return;
   }
@@ -687,6 +1014,23 @@ severitySlider.addEventListener("input", () => {
   onSimulationChanged();
 });
 
+// Paso 1 del algoritmo: la familia la indica el usuario; al cambiarla, la
+// propuesta se recalcula con los datos ya evaluados, sin repetir la evaluación.
+familySelect.addEventListener("change", () => {
+  state.family = familySelect.value === "sequential" ? "sequential" : "qualitative";
+  try {
+    chrome.storage.local.set({ paletteFamily: state.family });
+  } catch (error) {
+    // Sin almacenamiento se mantiene solo en memoria.
+  }
+  renderRecommendation();
+});
+
+// Conmutador de previsualización (RF07): aplica o retira sin recargar.
+previewToggle.addEventListener("change", () => {
+  sendPreview(previewToggle.checked);
+});
+
 // El umbral es un parámetro del panel: recalcular al cambiarlo, sin botón.
 thresholdInput.addEventListener("input", () => {
   const value = Number(thresholdInput.value);
@@ -713,6 +1057,7 @@ chrome.tabs.onActivated.addListener(() => {
 (async function init() {
   thresholdInput.value = String(DEFAULT_CONFUSION_THRESHOLD);
   await loadStoredSimulation();
+  await loadStoredFamily();
   updateSimulationControls();
   await loadEvaluation();
 })();

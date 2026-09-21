@@ -1,6 +1,6 @@
 # Banco de pruebas — Accesibilidad cromática de dashboards
 
-Cinco paneles web autónomos (HTML + CSS + JavaScript vanilla, sin frameworks ni bundler) construidos a propósito para validar una extensión de navegador que evalúa la accesibilidad cromática de dashboards. Los datos son ficticios pero verosímiles: ventas trimestrales de 2025 por región, en miles de euros.
+Seis paneles web autónomos (HTML + CSS + JavaScript vanilla, sin frameworks ni bundler) construidos a propósito para validar una extensión de navegador que evalúa la accesibilidad cromática de dashboards. Los datos son ficticios pero verosímiles: ventas de 2025 por región, en miles de euros (los mensuales del panel secuencial suman exactamente los trimestrales del resto).
 
 ## Paneles
 
@@ -11,12 +11,13 @@ Cinco paneles web autónomos (HTML + CSS + JavaScript vanilla, sin frameworks ni
 | [panel-categorias](panel-categorias/) | Barras apiladas con 18 categorías y leyenda de 18 colores | Caso en que ningún catálogo de paletas accesibles alcanza (Okabe-Ito: 8, Tol bright: 7, Tol muted: 9): obliga a generar o extender una paleta |
 | [panel-contraste](panel-contraste/) | Fallos deliberados: texto `#9E9E9E`/`#BDBDBD`/`#C8C8C8` sobre blanco, ejes de bajo contraste y dos pares de series adyacentes con luminancia casi idéntica (1.08:1) | Verificación del cálculo de contraste: cada par lleva su ratio WCAG esperado anotado como comentario HTML en `panel-contraste/index.html` |
 | [panel-conforme](panel-conforme/) | Paleta Okabe-Ito (8 colores) sobre fondo blanco con texto `#1A1A1A` (17.40:1) | Informe de cumplimiento: la extensión no debe proponer ningún reemplazo |
+| [panel-secuencial](panel-secuencial/) | Mapa de calor SVG/D3 (regiones × meses) con rampa semáforo `#C62828`→`#FBC02D`→`#2E7D32` por escalones (`NUM_CLASES = 3` en `datos.js`, ampliable a 5 para el capítulo 5) | Detección de rampa secuencial hostil al daltonismo (fills, nivel 1) y propuesta de rampa perceptualmente uniforme |
 
 ## Estructura
 
 ```
 Pruebas/
-├── index.html          ← índice con enlaces a los cinco paneles
+├── index.html          ← índice con enlaces a los seis paneles
 ├── README.md
 ├── lib/
 │   ├── chart.umd.min.js   (Chart.js 4.4.9, local)

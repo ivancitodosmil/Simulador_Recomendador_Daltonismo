@@ -216,7 +216,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch((error) => sendResponse({ ok: false, error: "unexpected", detail: String(error) }));
     return true;
   }
-  if (message && (message.type === "APPLY_SIMULATION" || message.type === "CLEAR_SIMULATION")) {
+  if (
+    message &&
+    (message.type === "APPLY_SIMULATION" ||
+      message.type === "CLEAR_SIMULATION" ||
+      message.type === "PREVIEW_PALETTE" ||
+      message.type === "CLEAR_PREVIEW")
+  ) {
     handleSimulationMessage(message)
       .then(sendResponse)
       .catch((error) => sendResponse({ ok: false, error: "unexpected", detail: String(error) }));

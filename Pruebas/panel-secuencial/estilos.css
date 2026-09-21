@@ -1,0 +1,97 @@
+/* Panel Secuencial: layout del mapa de calor. Los colores de la rampa NO
+   estan aqui: viven en los atributos fill de las celdas (nivel 1). */
+:root {
+  --color-fondo: #FFFFFF;
+  --color-tinta: #21262B;
+  --color-tinta-suave: #5A6572;
+  --color-borde: #E3E6EA;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-fondo);
+  color: var(--color-tinta);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+header {
+  padding: 24px 28px 8px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+}
+
+.subtitulo {
+  margin: 0;
+  color: var(--color-tinta-suave);
+  font-size: 0.95rem;
+  max-width: 78ch;
+}
+
+main {
+  padding: 20px 28px 32px;
+}
+
+.tarjeta {
+  background-color: #FFFFFF;
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  padding: 16px 18px 14px;
+  max-width: 900px;
+}
+
+.tarjeta h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+
+.tarjeta svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.eje text {
+  fill: #5A6572;
+  font-size: 11px;
+}
+
+.eje path,
+.eje line {
+  stroke: #C9CFD6;
+}
+
+.leyenda {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 12px 0 0;
+  padding: 0;
+  font-size: 0.82rem;
+  color: var(--color-tinta-suave);
+}
+
+.leyenda li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.muestra {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+footer {
+  padding: 0 28px 28px;
+  font-size: 0.85rem;
+}
+
+footer a {
+  color: #0B57D0;
+}
