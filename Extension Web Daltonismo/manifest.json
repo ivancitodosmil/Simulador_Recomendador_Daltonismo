@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Evaluador cromático de dashboards",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Evalúa la accesibilidad cromática de dashboards para usuarios con deficiencias en la percepción del color. Prototipo de trabajo de titulación. Todo el cálculo es local.",
   "icons": {
     "16": "assets/iconos/icono-16.png",

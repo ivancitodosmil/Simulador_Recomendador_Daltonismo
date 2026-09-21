@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel Secuencial — Banco de pruebas</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+
+<body>
+  <header>
+    <h1>Panel Secuencial (mapa de calor por escalones)</h1>
+    <p class="subtitulo">Escenario: cada celda se pinta según el nivel de ventas que le corresponde,
+      con una escala de <span id="numero-clases">3</span> niveles que va del rojo al verde pasando por
+      amarillo, como un semáforo. Esos colores son difíciles de distinguir con daltonismo: la extensión
+      debe detectar la escala como problemática y proponer otra que sí se distinga bien.</p>
+  </header>
+
+  <main>
+    <section class="tarjeta">
+      <h2>Ventas mensuales por región, 2025 (miles de €)</h2>
+      <div id="mapa-calor"></div>
+      <ul class="leyenda" id="leyenda-mapa"></ul>
+    </section>
+  </main>
+
+  <footer><a href="../index.html">← Volver al índice del banco de pruebas</a></footer>
+
+  <script src="../lib/d3.v7.min.js"></script>
+  <script src="datos.js"></script>
+  <script>
+    const ANCHO = 780;
+    const ALTO = 330;
+    const MARGEN = { sup: 30, der: 16, inf: 12, izq: 104 };
+    const anchoUtil = ANCHO - MARGEN.izq - MARGEN.der;
+    const altoUtil = ALTO - MARGEN.sup - MARGEN.inf;
+
+    document.getElementById("numero-clases").textContent = NUM_CLASES;
+
+    const svg = d3.select("#mapa-calor")
+      .append("svg")
+      .attr("viewBox", "0 0 " + ANCHO + " " + ALTO)
+      .attr("role", "img");
+    const g = svg.append("g")
+      .attr("transform", "translate(" + MARGEN.izq + "," + MARGEN.sup + ")");
+
+    const x = d3.scaleBand().domain(MESES).range([0, anchoUtil]).padding(0.06);
+    const y = d3.scaleBand().domain(NOMBRES_CORTOS).range([0, altoUtil]).padding(0.1);
+
+    // Escalones de igual amplitud sobre el rango observado.
+    const valores = REGIONES.flatMap(r => VENTAS_MENSUALES[r]);
+    const minimo = Math.min(...valores);
+    const maximo = Math.max(...valores);
+    const amplitud = (maximo - minimo) / NUM_CLASES;
+    const RAMPA = rampaParaClases(NUM_CLASES);
+    const claseDe = v => Math.min(NUM_CLASES - 1, Math.floor((v - minimo) / amplitud));
+
+    g.append("g").attr("class", "eje").call(d3.axisTop(x));
+    g.append("g").attr("class", "eje").call(d3.axisLeft(y));
+
+    // Celdas: el color del escalon va en el atributo fill (nivel 1).
+    REGIONES.forEach((region, i) => {
+      VENTAS_MENSUALES[region].forEach((valor, j) => {
+        g.append("rect")
+          .attr("class", "celda")
+          .attr("x", x(MESES[j]))
+          .attr("y", y(NOMBRES_CORTOS[i]))
+          .attr("width", x.bandwidth())
+          .attr("height", y.bandwidth())
+          .attr("rx", 2)
+          .attr("fill", RAMPA[claseDe(valor)])
+          .append("title")
+          .text(region + " · " + MESES[j] + " 2025: " + valor + " miles de €");
+      });
+    });
+
+    // Leyenda: un chip por escalon con su rango de valores.
+    const leyenda = document.getElementById("leyenda-mapa");
+    RAMPA.forEach((color, k) => {
+      const desde = Math.round(minimo + k * amplitud);
+      const hasta = k === NUM_CLASES - 1 ? maximo : Math.round(minimo + (k + 1) * amplitud);
+      const li = document.createElement("li");
+      const muestra = document.createElement("span");
+      muestra.className = "muestra";
+      muestra.style.backgroundColor = color;
+      li.appendChild(muestra);
+      li.appendChild(document.createTextNode("Escalón " + (k + 1) + ": " + desde + " – " + hasta + " miles de €"));
+      leyenda.appendChild(li);
+    });
+  </script>
+</body>
+
+</html>

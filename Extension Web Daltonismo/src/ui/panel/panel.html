@@ -122,6 +122,60 @@
       </h3>
       <ul id="conflict-list" class="lista-pares"></ul>
     </section>
+
+    <section id="recommendation-section" class="tarjeta" aria-labelledby="recommendation-heading" hidden>
+      <h2 id="recommendation-heading">Recomendación de paleta</h2>
+
+      <!-- Paso 1 del algoritmo: la familia la indica el usuario. -->
+      <div class="campo">
+        <label for="family-select">Familia de la paleta del dashboard</label>
+        <select id="family-select"
+                aria-label="Familia de la paleta del dashboard: categórica o secuencial">
+          <option value="qualitative">Categórica (series independientes)</option>
+          <option value="sequential">Secuencial (magnitud ordenada)</option>
+        </select>
+      </div>
+
+      <!-- Advertencia fija: la constancia de la propuesta no es un fallo. -->
+      <p class="nota-metodo">
+        La propuesta se calcula siempre con la simulación a severidad máxima (1,0),
+        para que dos corridas den el mismo resultado; por eso no cambia al mover el
+        deslizador de severidad.
+      </p>
+
+      <!-- Ajuste del Sprint 4: la selección define la entrada del algoritmo. -->
+      <h3>Series consideradas
+        <span class="insignia">solo afecta a la recomendación</span>
+      </h3>
+      <p class="color-meta">
+        Desmarca los colores que no sean categorías de datos (fondos, ejes, cuadrículas).
+        La matriz de distinguibilidad sigue evaluando todo lo visible.
+      </p>
+      <ul id="series-selection" class="lista-seleccion"></ul>
+
+      <!-- Desenlace: propuesta, cumplimiento sin reemplazo o aviso de rediseño. -->
+      <p id="recommendation-status" class="estado"></p>
+
+      <div id="recommendation-body" hidden>
+        <p id="recommendation-reason" class="niveles"></p>
+        <div class="paleta-encabezados" aria-hidden="true">
+          <span>Original</span>
+          <span>Propuesta</span>
+        </div>
+        <ul id="recommendation-mapping" class="paleta-lista"></ul>
+
+        <!-- Conmutador de previsualización (RF07). -->
+        <div class="campo campo--en-linea campo--conmutador">
+          <input type="checkbox" id="preview-toggle"
+                 aria-label="Previsualizar la paleta propuesta sobre la página; al desmarcar, la página recupera sus colores originales">
+          <label for="preview-toggle">Previsualizar la propuesta en la página</label>
+        </div>
+        <p id="preview-note" class="color-meta" hidden>
+          Los gráficos dibujados en canvas no tienen elementos recoloreables: la
+          previsualización no los modifica (la tabla de correspondencia sigue aplicando).
+        </p>
+      </div>
+    </section>
   </main>
 
   <script type="module" src="panel.js"></script>
