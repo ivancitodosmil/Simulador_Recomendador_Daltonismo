@@ -1,268 +1,902 @@
 /* ==================================================================
-   Componentes de la interfaz (panel lateral y popup auxiliar).
-   Reglas del proyecto aplicadas aquí:
-   - Foco visible de 2px en todo control (tokens --foco-*).
-   - Los ESTADOS llevan icono de forma distinta + texto, nunca solo
-     color; las notas informativas estáticas se presentan como texto
-     normal con filete lateral, sin icono.
-   - Toda muestra de color lleva su hexadecimal escrito al lado.
+   Componentes del panel lateral (iteración 0.6.3): reproducción de la
+   maqueta Pruebas/Docs/maqueta-panel.html sobre los tokens auditados.
+   Concepto de la maqueta: instrumento de medida; la paleta del propio
+   dashboard es la única nota de color de la interfaz.
+   Reglas del proyecto que se mantienen:
+   - Ningún icono ni glifo (los cheurones son bordes CSS); ninguna
+     barra lateral de color; ninguna etiqueta en mayúsculas con
+     espaciado; ninguna sombra; ningún estado comunicado solo con color.
+   - Escala tipográfica fija 12/13/14/16/22 px en rem (1.4.4) y ningún
+     contenedor de texto con altura fija (1.4.12: min-height, no height).
+   - Foco visible de 2px; objetivos táctiles ≥ 24px.
+   - Responsividad por consultas de contenedor sobre .panel-raiz:
+     estrecho ≤ 360 = disposición de la maqueta; ≥ 521 marcador en una
+     fila de cuatro; ≥ 561 listas y recomendación en dos columnas.
    ================================================================== */
 
-/* El atributo hidden debe ganar siempre: sin esta regla, cualquier
-   componente con display propio seguiría visible, porque las reglas de
-   autor pisan la regla [hidden]{display:none} del navegador. */
 [hidden] {
   display: none !important;
 }
 
-body {
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body.panel {
   margin: 0;
-  background-color: var(--fondo);
+  background-color: var(--fondo-pagina);
   color: var(--texto);
-  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-  font-size: 14px;
+  font-family: var(--fuente-ui);
+  font-size: var(--tam-base);
+  line-height: 1.45;
 }
 
-h1 {
-  margin: 0 0 2px;
-  font-size: 1.05rem;
+.panel-raiz {
+  container-type: inline-size;
+  container-name: panel;
 }
 
-.descripcion {
-  margin: 0 0 12px;
-  color: var(--texto-secundario);
-  font-size: 0.82rem;
-}
-
-/* Foco visible de 2px, siempre. */
 :focus-visible {
   outline: var(--foco-grosor) solid var(--foco-color);
   outline-offset: 2px;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Texto solo para lectores de pantalla. */
+.solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Monoespaciada con dígitos tabulares: hexadecimales y cifras. */
+.mono {
+  font-family: var(--fuente-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ------------------------------------------------------------------
-   Botones
+   Cabecera
    ------------------------------------------------------------------ */
 
-.boton {
-  font: inherit;
-  padding: 8px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--borde);
+.cab {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
   background-color: var(--superficie);
-  color: var(--texto);
+  border-bottom: 1px solid var(--borde-suave);
+}
+
+.logo {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  flex: none;
+}
+
+.cab-texto {
+  flex: 1 0 auto;
+  min-width: 0;
+}
+
+.cab-texto b {
+  display: block;
+  font-size: var(--tam-titulo);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.cab-texto small {
+  display: block;
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Selector de tema: dos opciones de texto en un grupo con borde. */
+.tema {
+  margin-left: auto;
+  display: inline-flex;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-s);
+  overflow: hidden;
+  flex: none;
+}
+
+.tema button {
+  font: inherit;
+  font-size: var(--tam-etiqueta);
+  font-weight: 600;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 0;
+  background-color: var(--superficie);
+  color: var(--texto-secundario);
   cursor: pointer;
 }
 
-.boton--primario {
-  background-color: var(--primario);
-  border-color: var(--primario);
-  color: #FFFFFF;
+.tema button + button {
+  border-left: 1px solid var(--borde);
+}
+
+.tema button[aria-checked="true"] {
+  background-color: var(--acento);
+  color: var(--acento-texto);
+}
+
+.tema button:focus-visible {
+  outline-offset: -3px;
+}
+
+/* ------------------------------------------------------------------
+   Cuerpo y bloques
+   ------------------------------------------------------------------ */
+
+.cuerpo {
+  max-width: var(--ancho-contenido);
+  margin: 0 auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bloque {
+  background-color: var(--superficie);
+  border: 1px solid var(--borde-suave);
+  border-radius: var(--radio-m);
+}
+
+.bloque > .in {
+  padding: 14px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.in--resumen {
+  padding-bottom: 14px;
+}
+
+.tit {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tit h2 {
+  margin: 0;
+  font-size: var(--tam-base);
   font-weight: 600;
 }
 
-.boton--secundario {
-  padding: 4px 10px;
-  font-size: 0.8rem;
+.tit span {
+  font-size: var(--tam-secundario);
+  color: var(--texto-secundario);
+  text-align: right;
 }
 
-.boton:disabled {
+details.bloque > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: var(--objetivo-tactil);
+}
+
+details.bloque > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.bloque > summary h2 {
+  margin: 0;
+  font-size: var(--tam-base);
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+}
+
+details.bloque > summary span {
+  font-size: var(--tam-secundario);
+  color: var(--texto-secundario);
+  text-align: right;
+}
+
+/* Cheurón dibujado con bordes: abajo cerrado, arriba abierto. */
+details.bloque > summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid var(--texto-secundario);
+  border-bottom: 1.5px solid var(--texto-secundario);
+  transform: rotate(45deg) translateY(-2px);
+  margin-left: 4px;
+  flex: none;
+  transition: transform 0.15s ease;
+}
+
+details.bloque[open] > summary::after {
+  transform: rotate(-135deg) translateY(-1px);
+}
+
+details.bloque[open] > summary {
+  border-bottom: 1px solid var(--borde-suave);
+}
+
+details.bloque > .in {
+  padding: 12px 14px 14px;
+}
+
+/* ------------------------------------------------------------------
+   Campos, texto de apoyo y botones
+   ------------------------------------------------------------------ */
+
+label.et {
+  display: block;
+  font-size: var(--tam-secundario);
+  color: var(--texto-secundario);
+  margin-bottom: 4px;
+}
+
+select {
+  width: 100%;
+  font: inherit;
+  font-size: var(--tam-base);
+  color: var(--texto);
+  background-color: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-s);
+  padding: 7px 10px;
+  min-height: 34px;
+}
+
+.fila-sev {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fila-sev input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--acento);
+  min-height: var(--objetivo-tactil);
+}
+
+.fila-sev input[type="range"]:disabled {
+  opacity: 0.5;
+}
+
+.fila-sev output {
+  min-width: 2.4em;
+  text-align: right;
+  font-size: var(--tam-base);
+}
+
+.fila-umbral {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.fila-umbral label.et {
+  margin: 0;
+}
+
+input[type="number"] {
+  font: inherit;
+  font-size: var(--tam-base);
+  width: 5.5em;
+  min-height: 34px;
+  padding: 6px 8px;
+  color: var(--texto);
+  background-color: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-s);
+}
+
+.ayuda {
+  margin: 0;
+  font-size: var(--tam-secundario);
+  color: var(--texto-secundario);
+}
+
+.vacio {
+  margin: 0;
+  padding: 8px 0;
+  font-size: var(--tam-secundario);
+  color: var(--texto-secundario);
+  text-align: center;
+}
+
+.btn {
+  font: inherit;
+  font-size: var(--tam-base);
+  font-weight: 600;
+  border-radius: var(--radio-s);
+  min-height: 36px;
+  padding: 8px 14px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.btn.prim {
+  background-color: var(--acento);
+  color: var(--acento-texto);
+  border: 1px solid var(--acento);
+}
+
+.btn.secu {
+  background-color: var(--superficie);
+  color: var(--acento);
+  border: 1px solid var(--borde);
+}
+
+.btn.texto {
+  background: transparent;
+  border: 0;
+  color: var(--texto-secundario);
+  font-weight: 500;
+  width: auto;
+  padding: 8px 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.btn:disabled {
   opacity: 0.6;
   cursor: progress;
 }
 
-/* Botón a lo ancho del panel. */
-.boton--bloque {
-  display: block;
-  width: 100%;
+/* Botón con aspecto de enlace (Revisar). */
+.enlace {
+  font: inherit;
+  font-size: var(--tam-secundario);
+  font-weight: 600;
+  color: var(--acento);
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  min-height: var(--objetivo-tactil);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-/* Evaluación ya aplicada: acabado plano (el estado lo comunica el propio
-   cambio de texto del botón, no solo el color). */
-.boton--hecho {
-  background-color: var(--superficie);
-  border-color: var(--borde);
-  color: var(--correcto);
+/* Estados como párrafo: «Aviso»/«Error» en semibold y en su color. */
+.estado {
+  margin: 0;
+  font-size: var(--tam-secundario);
+}
+
+.estado-marca {
   font-weight: 600;
 }
 
-/* ------------------------------------------------------------------
-   Popup auxiliar
-   ------------------------------------------------------------------ */
-
-body.popup {
-  width: 340px;
-  padding: 14px 16px 16px;
-  box-sizing: border-box;
-}
+.estado-marca--aviso { color: var(--aviso); }
+.estado-marca--error { color: var(--error); }
 
 /* ------------------------------------------------------------------
-   Panel lateral: página gris suave con tarjetas blancas
+   Franja de la paleta (bandas) y marcador
    ------------------------------------------------------------------ */
 
-body.panel {
-  background-color: var(--superficie);
-  padding: 18px 14px 28px;
-  box-sizing: border-box;
-}
-
-/* Cabecera centrada con el logotipo de la extensión. */
-.panel-cabecera {
-  text-align: center;
-  margin-bottom: 16px;
-}
-
-.panel-logo {
-  display: block;
-  margin: 0 auto 8px;
-}
-
-body.panel h1 {
-  font-size: 1.25rem;
-  margin: 0 0 4px;
-}
-
-.panel-cabecera .descripcion {
-  max-width: 44ch;
-  margin: 0 auto;
-}
-
-body.panel main {
+.franja {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 6px;
 }
 
-/* Tarjeta: unidad visual de cada sección. */
-.tarjeta {
-  background-color: var(--fondo);
-  border-radius: 12px;
-  padding: 14px 16px 16px;
+.franja .fila {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
 }
 
-body.panel h2 {
-  font-size: 1rem;
-  margin: 0 0 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--superficie);
+.franja .fila > span {
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
 }
 
-body.panel h3 {
+.banda {
+  display: flex;
+  height: 22px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-s);
+  overflow: hidden;
+  background-color: var(--superficie-2);
+}
+
+.banda span {
+  flex: 1;
+}
+
+.marcador {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--borde-suave);
+}
+
+.dato {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dato:nth-child(odd) {
+  border-right: 1px solid var(--borde-suave);
+}
+
+.dato:nth-child(-n + 2) {
+  border-bottom: 1px solid var(--borde-suave);
+}
+
+.dato .v {
+  font-size: var(--tam-grande);
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.dato .v.mal { color: var(--error); }
+.dato .v.avi { color: var(--aviso); }
+
+.dato .v small {
+  font-size: var(--tam-secundario);
+  font-weight: 500;
+  color: var(--texto-secundario);
+}
+
+.dato .e {
+  font-size: var(--tam-secundario);
+  color: var(--texto);
+}
+
+.dato .d {
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+}
+
+/* ------------------------------------------------------------------
+   Muestras de color
+   ------------------------------------------------------------------ */
+
+.m {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--borde);
+  flex: none;
+  vertical-align: middle;
+}
+
+.par {
+  display: inline-flex;
+  border: 1px solid var(--borde);
+  border-radius: 3px;
+  overflow: hidden;
+  flex: none;
+}
+
+.par span {
+  width: 18px;
+  height: 18px;
+}
+
+/* ------------------------------------------------------------------
+   Paleta detectada
+   ------------------------------------------------------------------ */
+
+.tabla-pal {
+  display: flex;
+  flex-direction: column;
+}
+
+.tabla-pal .cab-t,
+.tabla-pal .r {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.tabla-pal .cab-t {
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--borde-suave);
+}
+
+.tabla-pal .r {
+  padding: 7px 0;
+  border-bottom: 1px solid var(--borde-suave);
+}
+
+.tabla-pal .r:last-child {
+  border-bottom: 0;
+}
+
+.tabla-pal .hex {
+  font-size: var(--tam-secundario);
+}
+
+.tabla-pal .rol {
+  display: block;
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------
+   Pastillas
+   ------------------------------------------------------------------ */
+
+.pastilla {
+  display: inline-block;
+  font-size: var(--tam-etiqueta);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radio-pastilla);
+  white-space: nowrap;
+}
+
+.pastilla--cumple { background-color: var(--correcto-suave); color: var(--correcto); }
+.pastilla--incumple { background-color: var(--error-suave); color: var(--error); }
+.pastilla--aviso { background-color: var(--aviso-suave); color: var(--aviso); }
+.pastilla--neutra { background-color: var(--superficie-2); color: var(--texto-secundario); }
+
+/* ------------------------------------------------------------------
+   Contraste
+   ------------------------------------------------------------------ */
+
+.grupo-c {
+  display: flex;
+  flex-direction: column;
+}
+
+.grupo-c h3 {
+  margin: 0 0 4px;
+  font-size: var(--tam-secundario);
+  font-weight: 600;
+}
+
+.grupo-c h3 span {
+  font-weight: 400;
+  color: var(--texto-secundario);
+}
+
+.rc {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--borde-suave);
+}
+
+.rc:last-child {
+  border-bottom: 0;
+}
+
+/* Muestra de texto «Aa»: color de texto sobre su fondo (min-height: 1.4.12). */
+.muestra-txt {
+  min-height: 28px;
+  border-radius: var(--radio-s);
+  border: 1px solid var(--borde-suave);
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: var(--tam-base);
+}
+
+/* Muestra de objeto: barra del color del objeto sobre su fondo. */
+.muestra-obj {
+  min-height: 28px;
+  border-radius: var(--radio-s);
+  border: 1px solid var(--borde-suave);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.muestra-obj span {
+  width: 22px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.muestra-obj span.tenue {
+  outline: 1px dashed var(--borde);
+}
+
+.rc .num {
+  font-size: var(--tam-base);
+  font-weight: 600;
+}
+
+.rc .num small {
+  font-weight: 400;
+  color: var(--texto-secundario);
+  font-size: var(--tam-etiqueta);
+}
+
+.rc .qd {
+  display: block;
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+  font-family: var(--fuente-ui);
+  overflow-wrap: anywhere;
+}
+
+.rc .qd code {
+  font-family: var(--fuente-mono);
+  font-size: var(--tam-etiqueta);
+}
+
+.sin-datos {
+  margin: 0;
+  padding: 7px 0;
+  font-size: var(--tam-secundario);
+  color: var(--texto-secundario);
+}
+
+/* Filas del resumen de las tres deficiencias (sin simulación). */
+.ov {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--borde-suave);
+  font-size: var(--tam-secundario);
+}
+
+.ov:last-child {
+  border-bottom: 0;
+}
+
+.ov .qd {
+  color: var(--texto-secundario);
+  font-size: var(--tam-etiqueta);
+}
+
+.ov .pastilla {
+  margin-left: auto;
+}
+
+/* ------------------------------------------------------------------
+   Matriz: triángulo inferior
+   ------------------------------------------------------------------ */
+
+.env-matriz {
+  overflow-x: auto;
+  position: relative;
+  margin: 0 -2px;
+}
+
+table.matriz {
+  border-collapse: separate;
+  border-spacing: 2px;
+  table-layout: fixed;
+  font-family: var(--fuente-mono);
+  font-size: var(--tam-etiqueta);
+  font-variant-numeric: tabular-nums;
+}
+
+table.matriz th {
+  font-weight: 500;
+  color: var(--texto-secundario);
+  padding: 0;
+}
+
+table.matriz thead th {
+  min-height: 26px;
+  height: 26px;
+  vertical-align: bottom;
+  width: 38px;
+}
+
+table.matriz th .m {
+  width: 14px;
+  height: 14px;
+}
+
+table.matriz th.fila {
+  text-align: left;
+  padding-right: 4px;
+  white-space: nowrap;
+  position: sticky;
+  left: 0;
+  background-color: var(--superficie);
+  z-index: 1;
+}
+
+table.matriz td {
+  width: 38px;
+  min-width: 38px;
+  height: 24px;
+  text-align: center;
+  border-radius: 3px;
+  background-color: var(--superficie-2);
+  color: var(--texto);
+}
+
+table.matriz td.vacia {
+  background-color: transparent;
+}
+
+table.matriz td.x {
+  background-color: var(--error-suave);
+  color: var(--error);
+  font-weight: 700;
+}
+
+.leyenda-m {
+  margin: 0;
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+}
+
+.leyenda-m b {
+  color: var(--error);
+}
+
+/* ------------------------------------------------------------------
+   Pares conflictivos con escala de 0 a 50
+   ------------------------------------------------------------------ */
+
+.pares {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.parc {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.parc .top {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  font-size: 0.85rem;
-  margin: 16px 0 8px;
 }
 
-/* Insignia: dato normativo compacto junto a un título (sin guiones). */
-.insignia {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--texto-secundario);
+.parc .top .hx {
+  font-size: var(--tam-secundario);
+}
+
+.parc .top .pastilla {
+  margin-left: auto;
+}
+
+.escala {
+  position: relative;
+  height: 18px;
+}
+
+.escala .pista {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 8px;
+  height: 2px;
+  background-color: var(--borde-suave);
+  border-radius: 2px;
+}
+
+.escala .zona {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  height: 6px;
+  background-color: var(--error-suave);
+  border-radius: 2px;
+}
+
+.escala .umbral {
+  position: absolute;
+  top: 2px;
+  width: 1.5px;
+  height: 14px;
+  background-color: var(--texto-secundario);
+}
+
+.escala .sim {
+  position: absolute;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--error);
+  margin-left: -5px;
+}
+
+.escala .tip {
+  position: absolute;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--texto);
   background-color: var(--superficie);
-  border-radius: 999px;
-  padding: 2px 10px;
-  white-space: nowrap;
+  margin-left: -5px;
 }
 
-.descripcion--centrada {
-  text-align: center;
-  margin: 0;
+.cifras {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+}
+
+.cifras b {
+  color: var(--texto);
+  font-weight: 600;
 }
 
 /* ------------------------------------------------------------------
-   Controles de simulación
+   Recomendación
    ------------------------------------------------------------------ */
 
-fieldset.simulacion {
-  border: none;
-  margin: 0;
-}
-
-/* La legend nativa se dibuja sobre la línea del borde del fieldset y, sin
-   borde, queda fuera de la tarjeta. El float la devuelve al flujo normal
-   del contenido, dentro del fondo blanco, sin perder la semántica. */
-fieldset.simulacion legend {
-  float: left;
-  width: 100%;
-  font-size: 1rem;
-  font-weight: 600;
-  padding: 0 0 8px;
-  margin: 0 0 10px;
-  border-bottom: 1px solid var(--superficie);
-}
-
-fieldset.simulacion legend + * {
-  clear: both;
-}
-
-.campo {
+.recomendacion-entrada,
+.recomendacion-salida {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin: 8px 0 0;
+  gap: 12px;
+  min-width: 0;
 }
 
-.campo label {
-  font-size: 0.8rem;
-  color: var(--texto-secundario);
-}
-
-.campo select {
-  font: inherit;
-  padding: 6px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--borde);
-  background-color: var(--fondo);
-  color: var(--texto);
-}
-
-.campo-deslizador {
+.series-res {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  font-size: var(--tam-secundario);
+  padding: 8px 10px;
+  background-color: var(--superficie-2);
+  border-radius: var(--radio-s);
 }
 
-.campo-deslizador input[type="range"] {
-  flex: 1;
-  accent-color: var(--primario);
-}
-
-.campo-deslizador input[type="range"]:disabled {
-  opacity: 0.5;
-}
-
-/* Valor numérico de la severidad, siempre visible. */
-.campo-deslizador output {
-  min-width: 2.2em;
-  text-align: right;
-  font-family: Consolas, "Courier New", monospace;
-  font-size: 0.9rem;
-}
-
-.campo--en-linea {
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-  margin: 10px 0;
-}
-
-.campo--en-linea input[type="number"] {
-  font: inherit;
-  width: 5em;
-  padding: 4px 6px;
-  border-radius: 6px;
-  border: 1px solid var(--borde);
-  background-color: var(--fondo);
-  color: var(--texto);
-}
-
-/* Casillas de series consideradas (ajuste del sprint 4). */
 .lista-seleccion {
   list-style: none;
-  margin: 0 0 12px;
+  margin: 8px 0 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
@@ -272,341 +906,203 @@ fieldset.simulacion legend + * {
 .casilla-serie {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  min-height: var(--objetivo-tactil);
   padding: 4px 8px;
-  background-color: var(--superficie);
-  border-radius: 6px;
-  font-size: 0.8rem;
+  border: 1px solid var(--borde-suave);
+  border-radius: var(--radio-s);
+  font-size: var(--tam-secundario);
   cursor: pointer;
+  max-width: 100%;
 }
 
 .casilla-serie input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--primario);
-  flex: none;
-}
-
-/* Conmutador de previsualización (sprint 4). */
-.campo--conmutador input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: var(--primario);
+  accent-color: var(--acento);
   flex: none;
-}
-
-.campo--conmutador label {
-  font-size: 0.85rem;
-  color: var(--texto);
-}
-
-/* ------------------------------------------------------------------
-   Estados y notas
-   ------------------------------------------------------------------ */
-
-/* Estado dinámico: icono de forma distinta + texto (regla del proyecto). */
-.estado {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
   margin: 0;
-  font-size: 0.85rem;
-  min-height: 1.2em;
 }
 
-.estado-icono {
-  font-weight: 700;
-  flex: none;
-}
-
-.estado--ok .estado-icono { color: var(--correcto); }
-.estado--warning .estado-icono { color: var(--advertencia); }
-.estado--error .estado-icono { color: var(--error); }
-.estado--info .estado-icono { color: var(--primario); }
-
-/* Aviso (estado de advertencia persistente): conserva icono + texto. */
-.aviso {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background-color: var(--fondo);
-  font-size: 0.8rem;
-  color: var(--texto);
-}
-
-.aviso .estado-icono { color: var(--advertencia); }
-
-/* Nota informativa estática: texto normal sobre fondo suave, sin icono. */
-.nota-metodo {
-  margin: 0 0 12px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  background-color: var(--superficie);
-  font-size: 0.78rem;
+.casilla-serie .nota {
+  font-size: var(--tam-etiqueta);
   color: var(--texto-secundario);
+  overflow-wrap: anywhere;
 }
 
-.nota-control {
-  margin: 8px 0 0;
-  padding: 8px 12px;
-  border-radius: 6px;
-  background-color: var(--superficie);
-  font-size: 0.76rem;
-  color: var(--texto-secundario);
-}
-
-.niveles {
-  margin: 0 0 10px;
-  color: var(--texto-secundario);
-  font-size: 0.8rem;
-}
-
-/* ------------------------------------------------------------------
-   Muestras de color y paleta
-   ------------------------------------------------------------------ */
-
-.paleta-encabezados {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--texto-secundario);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin: 0 0 6px;
-}
-
-.paleta-lista {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.esquema {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.color-fila {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 6px 8px;
-  background-color: var(--superficie);
-  border-radius: 6px;
-}
-
-.color-celda {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-/* Celda de paleta con metadatos debajo de la muestra. */
-.color-celda--vertical {
-  flex-direction: column;
-  align-items: flex-start;
   gap: 2px;
 }
 
-/* La muestra es decorativa (aria-hidden): el hex de al lado la anuncia. */
-.muestra-color {
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  border: 1px solid var(--borde);
-  flex: none;
+.esquema b {
+  font-size: var(--tam-titulo);
+  font-weight: 600;
 }
 
-.color-detalle {
+.esquema span {
+  font-size: var(--tam-secundario);
+  color: var(--texto-secundario);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  font-size: var(--tam-secundario);
+  color: var(--texto-secundario);
+}
+
+.kpis b {
+  display: block;
+  color: var(--texto);
+  font-size: var(--tam-titulo);
+  font-variant-numeric: tabular-nums;
+}
+
+.map {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+}
+
+.map .cab-t,
+.map .r {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: center;
+}
+
+.map .cab-t {
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--borde-suave);
+}
+
+.map .r {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--borde-suave);
+}
+
+.map .r:last-child {
+  border-bottom: 0;
+}
+
+.map .r div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--tam-secundario);
   min-width: 0;
 }
 
-.hex {
-  font-family: Consolas, "Courier New", monospace;
-  color: var(--texto);
+.interruptor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
 }
 
-.color-meta {
-  color: var(--texto-secundario);
-  font-size: 0.72rem;
-}
-
-/* ------------------------------------------------------------------
-   Pares evaluados
-   ------------------------------------------------------------------ */
-
-.lista-pares {
-  list-style: none;
-  margin: 0;
+/* Interruptor real (role="switch"): la posición del tirador dibuja el estado. */
+.sw {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: var(--radio-pastilla);
+  background-color: var(--superficie-2);
+  border: 1px solid var(--borde);
+  flex: none;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.par-fila {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 14px;
-  padding: 8px 10px;
-  background-color: var(--superficie);
-  border-radius: 8px;
-}
-
-.par-colores {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.par-sobre {
-  color: var(--texto-secundario);
-  font-size: 0.78rem;
-}
-
-.par-cifras {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  font-size: 0.85rem;
-}
-
-/* Veredicto textual con icono de forma distinta. */
-.estado-par {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  margin-left: auto;
-}
-
-.estado-par--cumple .estado-icono { color: var(--correcto); }
-.estado-par--incumple .estado-icono { color: var(--error); }
-
-/* Par conflictivo con detalle desplegable en la propia fila. */
-.detalle-plegable {
-  width: 100%;
-}
-
-.detalle-plegable summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 14px;
   cursor: pointer;
-  list-style: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.detalle-plegable summary::-webkit-details-marker {
-  display: none;
+.sw::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: var(--borde);
+  transition: left 0.15s ease, background-color 0.15s ease;
 }
 
-/* Indicador visual del desplegable (el estado expandido/contraído lo
-   anuncia el propio summary a los lectores de pantalla). */
-.detalle-plegable summary::after {
-  content: "▾ ver detalle";
-  font-size: 0.74rem;
-  font-weight: 600;
-  color: var(--primario);
-  margin-left: 8px;
-  white-space: nowrap;
+.sw[aria-checked="true"] {
+  background-color: var(--acento);
+  border-color: var(--acento);
 }
 
-.detalle-plegable[open] summary::after {
-  content: "▴ ocultar detalle";
-}
-
-.detalle-cuerpo {
-  width: 100%;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--fondo);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.82rem;
-}
-
-.detalle-cuerpo p {
-  margin: 0;
-}
-
-.detalle-linea {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.sw[aria-checked="true"]::after {
+  left: 18px;
+  background-color: var(--acento-texto);
 }
 
 /* ------------------------------------------------------------------
-   Matriz de distinguibilidad
+   Pie
    ------------------------------------------------------------------ */
 
-.matriz-envoltorio {
-  overflow-x: auto;
-  margin: 8px 0;
-}
-
-.matriz {
-  border-collapse: collapse;
-  font-size: 0.78rem;
-}
-
-.matriz caption {
-  text-align: left;
-  padding-bottom: 6px;
-}
-
-.matriz th,
-.matriz td {
-  border: 1px solid var(--superficie);
-  padding: 4px 6px;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.matriz thead th,
-.matriz tbody th {
-  background-color: var(--superficie);
-  text-align: left;
-  font-weight: 600;
-}
-
-.celda-diagonal {
-  background-color: var(--superficie);
-}
-
-/* Celda conflictiva: botón real, operable con teclado. */
-.celda-conflicto {
-  font: inherit;
-  font-weight: 700;
-  color: var(--error);
-  background: none;
-  border: 1px solid var(--error);
-  border-radius: 4px;
-  padding: 2px 5px;
-  cursor: pointer;
-}
-
-.leyenda-series {
-  margin: 0;
-  padding: 0 0 0 20px;
+.pie {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 0.82rem;
-}
-
-.leyenda-series li {
-  display: flex;
+  gap: 8px;
   align-items: center;
-  gap: 6px;
+}
+
+.pie .btn.secu {
+  flex: 1;
+}
+
+/* ------------------------------------------------------------------
+   Marcador en una fila de cuatro desde 521 px: por debajo, cada dato
+   dispone de menos de 95 px y «Distinguibilidad» (≈ 90 px a 12 px) no
+   cabe; la maqueta, a 380 px, va en 2×2.
+   ------------------------------------------------------------------ */
+
+@container panel (min-width: 521px) {
+  .marcador {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .dato:nth-child(-n + 2) {
+    border-bottom: none;
+  }
+
+  .dato:nth-child(odd) {
+    border-right: none;
+  }
+
+  .dato:not(:last-child) {
+    border-right: 1px solid var(--borde-suave);
+  }
+}
+
+/* ------------------------------------------------------------------
+   Ancho grande (≥ 561 px): listas y recomendación en dos columnas
+   ------------------------------------------------------------------ */
+
+@container panel (min-width: 561px) {
+  #text-pairs,
+  #graphic-pairs,
+  #recommendation-mapping,
+  #palette-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+  }
+
+  .tabla-pal .cab-t,
+  .map .cab-t {
+    display: none;
+  }
+
+  /* Misma especificidad que .bloque > .in, que fija display: flex. */
+  .bloque > .in.recomendacion {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+  }
 }

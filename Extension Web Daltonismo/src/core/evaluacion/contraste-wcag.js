@@ -132,11 +132,17 @@ export function evaluateWcagContrast(observations, { doc = document } = {}) {
         largeText,
         passes: meetsThreshold(ratio, threshold), // sin redondeo previo
         count: 0,
-        examples: []
+        examples: [],
+        // Roles de las observaciones que aportan al par (sprint 5, bloque 2):
+        // permiten distinguir un fallo de serie de uno de borde decorativo.
+        roles: []
       };
       groups.set(key, group);
     }
     group.count += 1;
+    if (!group.roles.includes(observation.role)) {
+      group.roles.push(observation.role);
+    }
     const example = describeElement(observation.element);
     if (example && group.examples.length < MAX_EXAMPLES && !group.examples.includes(example)) {
       group.examples.push(example);

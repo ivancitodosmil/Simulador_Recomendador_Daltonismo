@@ -1,29 +1,137 @@
 /* ==================================================================
-   Tokens de diseño de la interfaz de la extensión.
-   Paleta verificada contra WCAG 2.1 y contra las tres simulaciones
-   de daltonismo (protanopia, deuteranopia, tritanopia).
+   Tokens de diseño de la extensión (v0.6.3). ÚNICA fuente de identidad
+   visual: el panel los consume vía var() y el reporte exportable lleva
+   una copia literal del tema claro en src/core/reporte/plantilla.js
+   (el reporte es un documento imprimible, solo tema claro); la
+   herramienta herramientas/auditoria-tokens.mjs verifica que esa copia
+   coincide, que los dos bloques oscuros son idénticos y que TODOS los
+   pares de este archivo cumplen:
+   - texto (incluido el secundario y los semánticos) ≥ 4,5:1 sobre
+     cada superficie donde se apoya;
+   - bordes de control y anillo de foco ≥ 3:1;
+   - correcto/aviso/error distinguibles entre sí con ΔE00 ≥ 10 bajo
+     protanopía, deuteranopía (Machado, severidad 1,0) y tritanopía
+     (Brettel), calculado con los módulos de la propia extensión.
+
+   Identidad: acento azul sobrio (#155EA2); los neutros llevan un
+   ligero sesgo de matiz hacia ese azul (nunca grises puros). Los
+   semánticos derivan de la familia Okabe-Ito: correcto del verde
+   azulado #009E73, aviso del naranja #E69F00 y error del bermellón
+   #D55E00 en tema claro. El tema oscuro (0.6.7, «Azul noche») usa
+   neutros azulados poco saturados, texto blanco roto (≈ 12:1, por
+   encima de AAA sin deslumbrar), error rojo coral #F28080, aviso ámbar
+   #E5C46E y correcto verde azulado #78CFBE; separación mínima del trío
+   bajo las tres deficiencias ≥ 12 (auditada). Cada muestra y banda del
+   dashboard lleva su propio borde para leerse sobre el fondo azulado.
+
+   Tema (0.6.3): mientras no se elige, sigue la preferencia del
+   sistema; la elección manual se guarda en chrome.storage.local y se
+   aplica como data-tema="claro|oscuro" en <html> antes del primer
+   pintado (src/ui/panel/tema.js). Patrón: claro en :root; oscuro bajo
+   prefers-color-scheme: dark guardado con :root:not([data-tema="claro"])
+   y repetido en :root[data-tema="oscuro"], de modo que la elección
+   manual gana en los dos sentidos.
+
    Regla del proyecto: ningún estado se comunica solo con color;
-   siempre acompaña un icono de forma distinta y un texto.
+   siempre acompañan texto y forma.
    ================================================================== */
+
 :root {
-  /* Superficies y estructura */
-  --fondo: #FFFFFF;
-  --superficie: #F4F6F8;
-  --borde: #767E86;
+  color-scheme: light;
 
-  /* Texto */
-  --texto: #1A1D21;
-  --texto-secundario: #585F66;
+  /* --- Superficies y estructura (sesgo azul, no grises puros) --- */
+  --fondo-pagina: #F2F5F9;   /* fondo general del panel            */
+  --superficie: #FFFFFF;     /* bloques y controles                */
+  --superficie-2: #E8EDF4;   /* celdas, resumen de series          */
+  --borde: #64707F;          /* bordes de control (≥ 3:1)          */
+  --borde-suave: #C9D2DE;    /* separadores y bordes de bloque     */
 
-  /* Acción e interacción */
-  --primario: #005BB6;
+  /* --- Texto --- */
+  --texto: #16202C;
+  --texto-secundario: #465362;
 
-  /* Estados semánticos (siempre con icono + texto, nunca solo color) */
-  --correcto: #1D4417;
-  --advertencia: #6E7000;
-  --error: #965860;
+  /* --- Acento único --- */
+  --acento: #155EA2;         /* acciones, enlaces, foco            */
+  --acento-texto: #FFFFFF;   /* texto sobre el acento              */
 
-  /* Foco visible: todo control enfocable muestra un contorno de 2px */
+  /* --- Semánticos (siempre con texto, nunca solo color) --- */
+  --correcto: #00563F;       --correcto-suave: #DCF2E8;
+  --aviso: #8A6100;          --aviso-suave: #F5EAC9;
+  --error: #7F2B00;          --error-suave: #FBE3D6;
+
+  /* --- Foco visible --- */
   --foco-grosor: 2px;
-  --foco-color: var(--primario);
+  --foco-color: var(--acento);
+
+  /* --- Tipografía: pila del sistema y monoespaciada (hex, cifras) --- */
+  --fuente-ui: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fuente-mono: ui-monospace, Consolas, "Cascadia Mono", "Courier New", monospace;
+
+  /* --- Escala tipográfica fija: 12, 13, 14, 16 y 22 px en rem sobre 16
+         (criterio 1.4.4); ningún texto por debajo de 12 px --- */
+  --tam-etiqueta: 0.75rem;     /* 12 px: rótulos, metadatos          */
+  --tam-secundario: 0.8125rem; /* 13 px: texto de apoyo              */
+  --tam-base: 0.875rem;        /* 14 px: texto general y títulos     */
+  --tam-titulo: 1rem;          /* 16 px: nombre, esquema, cifras     */
+  --tam-grande: 1.375rem;      /* 22 px: cifras del marcador         */
+
+  /* --- Espaciado (escala de 8 px con medio paso) --- */
+  --esp-1: 4px;
+  --esp-2: 8px;
+  --esp-3: 12px;
+  --esp-4: 16px;
+  --esp-5: 24px;
+  --esp-6: 32px;
+
+  /* --- Formas y tamaños (radios de la maqueta) --- */
+  --radio-s: 4px;
+  --radio-m: 8px;
+  --radio-pastilla: 999px;
+  --objetivo-tactil: 24px;   /* mínimo de todo control interactivo */
+  --ancho-contenido: 760px;  /* contenido centrado en paneles anchos  */
+}
+
+/* Tema oscuro automático: preferencia del sistema mientras el usuario
+   no elija; la elección manual «claro» lo anula. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    color-scheme: dark;
+
+    --fondo-pagina: #0F1420;
+    --superficie: #1E2A40;
+    --superficie-2: #27364E;
+    --borde: #8794AA;
+    --borde-suave: #2A3650;
+
+    --texto: #E6ECF5;
+    --texto-secundario: #A5B1C4;
+
+    --acento: #8AB4F8;
+    --acento-texto: #0F1420;
+
+    --correcto: #78CFBE;     --correcto-suave: #15322F;
+    --aviso: #E5C46E;        --aviso-suave: #322D1C;
+    --error: #F28080;        --error-suave: #3B2230;
+  }
+}
+
+/* Tema oscuro elegido a mano: mismos valores, gana sobre el sistema. */
+:root[data-tema="oscuro"] {
+  color-scheme: dark;
+
+  --fondo-pagina: #0F1420;
+  --superficie: #1E2A40;
+  --superficie-2: #27364E;
+  --borde: #8794AA;
+  --borde-suave: #2A3650;
+
+  --texto: #E6ECF5;
+  --texto-secundario: #A5B1C4;
+
+  --acento: #8AB4F8;
+  --acento-texto: #0F1420;
+
+  --correcto: #78CFBE;     --correcto-suave: #15322F;
+  --aviso: #E5C46E;        --aviso-suave: #322D1C;
+  --error: #F28080;        --error-suave: #3B2230;
 }

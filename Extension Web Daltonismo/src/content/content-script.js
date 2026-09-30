@@ -117,7 +117,10 @@
             element,
             property,
             previousValue: element.style.getPropertyValue(property),
-            previousPriority: element.style.getPropertyPriority(property)
+            previousPriority: element.style.getPropertyPriority(property),
+            // Restauracion exacta: si el elemento no tenia atributo style,
+            // al limpiar se retira tambien el atributo vacio que queda.
+            hadStyleAttribute: element.hasAttribute("style")
           });
           element.style.setProperty(property, entry.toHex);
         }
@@ -141,6 +144,16 @@
         restored += 1;
       } catch (error) {
         // El elemento desapareció del documento: no hay nada que restaurar.
+      }
+    }
+    // Segunda pasada: elimina los atributos style vacios que este modulo creo.
+    for (const change of previewChanges) {
+      try {
+        if (!change.hadStyleAttribute && change.element.getAttribute("style") === "") {
+          change.element.removeAttribute("style");
+        }
+      } catch (error) {
+        // Elemento fuera del documento.
       }
     }
     previewChanges = null;
@@ -230,6 +243,26 @@
     if (message && message.type === "PING") {
       sendResponse({ ok: true });
       return false;
+    }
+    if (message && message.type === "GET_PAGE_STATE") {
+      // Reconciliación (sprint 5, bloque 3): el panel pregunta qué tiene
+      // la página DE VERDAD. Si el módulo del filtro nunca se cargó, no
+      // puede haber filtro (solo este módulo lo aplica).
+      (async () => {
+        let filter = { active: false, config: null };
+        if (filterModulePromise) {
+          const filterModule = await filterModulePromise;
+          filter = filterModule.getSimulationFilterState();
+        }
+        return {
+          ok: true,
+          filter,
+          previewActive: Array.isArray(previewChanges) && previewChanges.length > 0
+        };
+      })()
+        .then(sendResponse)
+        .catch(() => sendResponse({ ok: true, filter: { active: false, config: null }, previewActive: false }));
+      return true;
     }
     if (message && message.type === "EXTRACT_PALETTE") {
       extractPalette()

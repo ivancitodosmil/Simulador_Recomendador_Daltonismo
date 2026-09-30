@@ -25,8 +25,10 @@ const VENTAS_MENSUALES = {
 };
 
 // Numero de escalones de la escala secuencial. Valor por defecto: 3.
-// Puede subirse a 5 para las pruebas de calibracion del capitulo cinco
-// (la rampa base tiene 5 tonos y rampaParaClases los equiespacia).
+// Para las pruebas del capitulo cinco puede alternarse SIN editar este
+// archivo abriendo el panel con ?clases=5 en la direccion (index.html lee
+// el parametro); la rampa base tiene 5 tonos y rampaParaClases los
+// equiespacia.
 const NUM_CLASES = 3;
 
 // Rampa DELIBERADAMENTE hostil al daltonismo: semaforo del rojo al verde

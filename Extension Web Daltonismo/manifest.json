@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Evaluador cromático de dashboards",
-  "version": "0.4.0",
-  "description": "Evalúa la accesibilidad cromática de dashboards para usuarios con deficiencias en la percepción del color. Prototipo de trabajo de titulación. Todo el cálculo es local.",
+  "version": "0.6.7",
+  "description": "Evalúa la accesibilidad cromática de dashboards para personas con daltonismo: simula deficiencias, mide contraste WCAG y propone paletas. Todo el cálculo es local.",
+  "minimum_chrome_version": "116",
   "icons": {
     "16": "assets/iconos/icono-16.png",
     "32": "assets/iconos/icono-32.png",
@@ -10,7 +11,7 @@
     "128": "assets/iconos/icono-128.png"
   },
   "action": {
-    "default_title": "Evaluador cromático de dashboards",
+    "default_title": "Abrir el evaluador cromático en esta pestaña",
     "default_icon": {
       "16": "assets/iconos/icono-16.png",
       "32": "assets/iconos/icono-32.png",
@@ -30,10 +31,16 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "src/core/color/*.js",
-        "src/core/extraccion/*.js",
-        "src/core/simulacion/*.js",
-        "src/core/evaluacion/*.js"
+        "src/core/color/conversion.js",
+        "src/core/color/diferencia.js",
+        "src/core/color/contraste.js",
+        "src/core/extraccion/dom-svg.js",
+        "src/core/extraccion/canvas.js",
+        "src/core/extraccion/consolidacion.js",
+        "src/core/simulacion/filtro-svg.js",
+        "src/core/simulacion/machado.js",
+        "src/core/simulacion/matrices.js",
+        "src/core/evaluacion/contraste-wcag.js"
       ],
       "matches": ["<all_urls>"]
     }

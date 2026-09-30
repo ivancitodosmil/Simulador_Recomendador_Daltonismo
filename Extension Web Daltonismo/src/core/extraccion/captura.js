@@ -23,6 +23,8 @@ const MIN_CAPTURE_TONE_SHARE = 0.008;
 export async function extractFromCapture(windowId) {
   // PNG para no introducir artefactos de compresión en los colores.
   const dataUrl = await chrome.tabs.captureVisibleTab(windowId, { format: "png" });
+  // fetch sobre una URL data: NO es una petición de red (RNF02): solo
+  // decodifica localmente el PNG en base64 que devolvió la captura.
   const blob = await (await fetch(dataUrl)).blob();
   const bitmap = await createImageBitmap(blob);
 
