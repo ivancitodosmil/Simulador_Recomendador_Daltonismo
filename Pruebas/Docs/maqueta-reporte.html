@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reporte de accesibilidad cromática</title>
+<style>
+/* Concepto: informe de laboratorio. Portada con la paleta del dashboard como
+   protagonista; cuerpo sobrio y preciso. Solo tema claro (documento imprimible).
+   Colores = tokens claros auditados de la extension, sin anadir ninguno. */
+:root{
+  --fondo:#F2F5F9; --papel:#FFFFFF; --superficie-2:#E8EDF4;
+  --borde:#64707F; --borde-suave:#C9D2DE;
+  --texto:#16202C; --texto-secundario:#465362;
+  --acento:#155EA2; --acento-texto:#FFFFFF;
+  --correcto:#00563F; --correcto-suave:#DCF2E8;
+  --aviso:#8A6100; --aviso-suave:#F5EAC9;
+  --error:#7F2B00; --error-suave:#FBE3D6;
+  --ui: system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono: ui-monospace,Consolas,"Cascadia Mono","Courier New",monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{margin:0;background:var(--fondo);color:var(--texto);font-family:var(--ui);font-size:0.9375rem;line-height:1.55}
+.hoja{max-width:880px;margin:24px auto;background:var(--papel);border:1px solid var(--borde-suave);border-radius:8px;overflow:hidden}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.sec{color:var(--texto-secundario)}
+.solo-lector{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- portada ---------- */
+.portada{background:var(--acento);color:var(--acento-texto);padding:28px 36px 24px}
+.portada .marca{display:flex;align-items:center;gap:10px;font-size:0.8125rem;font-weight:600;opacity:1}
+.logo{width:22px;height:22px;border-radius:5px;display:grid;grid-template-columns:1fr 1fr;overflow:hidden;border:1.5px solid var(--acento-texto)}
+.logo i:nth-child(1){background:#E69F00}.logo i:nth-child(2){background:#56B4E9}.logo i:nth-child(3){background:#009E73}.logo i:nth-child(4){background:#CC79A7}
+.portada h1{font-size:2rem;line-height:1.15;margin:18px 0 6px;font-weight:700;text-wrap:balance;letter-spacing:-0.01em}
+.portada .sub{font-size:1rem;margin:0}
+.meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 20px;margin-top:22px;padding-top:16px;border-top:1px solid rgba(255,255,255,.45)}
+.meta div{min-width:0}
+.meta dt{font-size:0.75rem;opacity:.92}
+.meta dd{margin:2px 0 0;font-size:0.875rem;font-weight:600;overflow-wrap:anywhere}
+
+/* bandas de la paleta: la imagen del reporte */
+.bandas{padding:0 36px;margin-top:-1px;background:var(--acento)}
+.bandas .caja{background:var(--papel);border-radius:8px 8px 0 0;padding:18px 20px 16px;display:flex;flex-direction:column;gap:8px}
+.bfila{display:grid;grid-template-columns:118px 1fr;gap:12px;align-items:center}
+.bfila span{font-size:0.8125rem;color:var(--texto-secundario)}
+.bfila b{display:block;font-size:0.8125rem;color:var(--texto);font-weight:600}
+.banda{display:flex;height:44px;border:1px solid var(--borde);border-radius:4px;overflow:hidden}
+.banda i{flex:1}
+.nota-banda{font-size:0.8125rem;color:var(--texto-secundario);margin:4px 0 0}
+
+/* ---------- cuerpo ---------- */
+.cuerpo{padding:8px 36px 36px}
+section{padding-top:28px}
+h2{font-size:1.25rem;margin:0 0 4px;font-weight:700}
+h2 small{font-size:0.8125rem;font-weight:500;color:var(--texto-secundario);margin-left:8px}
+.intro{margin:0 0 14px;color:var(--texto-secundario);max-width:66ch}
+h3{font-size:0.9375rem;margin:18px 0 6px;font-weight:650}
+h3 span{font-weight:400;color:var(--texto-secundario)}
+
+/* veredicto */
+.veredicto{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--borde-suave);border-radius:8px;overflow:hidden}
+.ver{padding:16px 18px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.ver + .ver{border-left:1px solid var(--borde-suave)}
+.ver .d{font-size:0.8125rem;color:var(--texto-secundario)}
+.ver .v{font-size:2.25rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.ver .v small{font-size:0.9375rem;font-weight:500;color:var(--texto-secundario);margin-left:6px}
+.ver .v.mal{color:var(--error)}
+.ver .v.ok{color:var(--correcto)}
+.ver .t{font-size:0.875rem}
+.ver .esq{font-size:1.125rem;font-weight:700;line-height:1.25}
+.resumen-texto{margin:14px 0 0;max-width:70ch}
+
+/* pastillas */
+.p{font-size:0.75rem;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap;display:inline-block}
+.p.ok{background:var(--correcto-suave);color:var(--correcto)}
+.p.ko{background:var(--error-suave);color:var(--error)}
+
+/* paleta en rejilla */
+.rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.ficha{border:1px solid var(--borde-suave);border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
+.ficha .dos{display:grid;grid-template-columns:1fr 1fr;height:46px;border-bottom:1px solid var(--borde-suave)}
+.ficha .dos i{display:block}
+.ficha .dat{padding:8px 10px;display:flex;flex-direction:column;gap:1px;font-size:0.8125rem}
+.ficha .dat .hx{font-family:var(--mono);font-size:0.8125rem;font-weight:600}
+.ficha .dat .sim{font-family:var(--mono);font-size:0.75rem;color:var(--texto-secundario)}
+.ficha .dat .rol{font-size:0.75rem;color:var(--texto-secundario)}
+.leyenda{font-size:0.8125rem;color:var(--texto-secundario);margin:8px 0 0}
+
+/* contraste */
+.tabla{width:100%;border-collapse:collapse;font-size:0.875rem}
+.tabla th{text-align:left;font-size:0.75rem;font-weight:600;color:var(--texto-secundario);padding:6px 8px;border-bottom:1px solid var(--borde)}
+.tabla td{padding:8px;border-bottom:1px solid var(--borde-suave);vertical-align:middle}
+.tabla td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.aa{width:46px;height:30px;border:1px solid var(--borde-suave);border-radius:4px;display:grid;place-items:center;font-weight:700;font-size:0.9375rem}
+.obj{width:46px;height:30px;border:1px solid var(--borde-suave);border-radius:4px;display:grid;place-items:center}
+.obj i{width:26px;height:13px;border-radius:2px}
+.escala-c{position:relative;height:16px;min-width:140px}
+.escala-c .pista{position:absolute;left:0;right:0;top:7px;height:2px;background:var(--borde-suave)}
+.escala-c .zona{position:absolute;left:0;top:5px;height:6px;background:var(--error-suave);border-radius:2px}
+.escala-c .umb{position:absolute;top:1px;width:1.5px;height:14px;background:var(--texto-secundario)}
+.escala-c .pt{position:absolute;top:3px;width:10px;height:10px;border-radius:50%;margin-left:-5px}
+.escala-c .pt.ko{background:var(--error)}
+.escala-c .pt.ok{background:var(--correcto)}
+.eje-c{display:flex;justify-content:space-between;font-size:0.6875rem;color:var(--texto-secundario);font-family:var(--mono);position:relative;height:14px}
+.eje-c span{position:absolute;transform:translateX(-50%)}
+.env{overflow-x:auto}
+
+/* matriz */
+table.matriz{border-collapse:separate;border-spacing:2px;font-family:var(--mono);font-size:0.75rem;font-variant-numeric:tabular-nums}
+table.matriz th{font-weight:500;color:var(--texto-secundario);padding:0}
+table.matriz thead th{text-align:center;vertical-align:bottom;height:34px}
+table.matriz thead th small{display:block;font-size:0.6875rem}
+table.matriz th.fila{text-align:left;padding-right:6px;white-space:nowrap}
+.m{display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid var(--borde);vertical-align:middle}
+table.matriz td{width:42px;height:26px;text-align:center;border-radius:3px;background:var(--superficie-2)}
+table.matriz td.x{background:var(--error-suave);color:var(--error);font-weight:700}
+table.matriz td.n{background:transparent}
+
+.pares{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.parc{border:1px solid var(--borde-suave);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.parc .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--mono);font-size:0.8125rem}
+.parc .top .p{margin-left:auto;font-family:var(--ui)}
+.chips{display:flex;height:26px;border:1px solid var(--borde);border-radius:4px;overflow:hidden}
+.chips i{flex:1}
+.chips-f{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;font-size:0.75rem;color:var(--texto-secundario)}
+.escala{position:relative;height:18px}
+.escala .pista{position:absolute;left:0;right:0;top:8px;height:2px;background:var(--borde-suave)}
+.escala .zona{position:absolute;left:0;top:6px;height:6px;background:var(--error-suave);border-radius:2px}
+.escala .umbral{position:absolute;top:2px;width:1.5px;height:14px;background:var(--texto-secundario)}
+.escala .sim{position:absolute;top:4px;width:10px;height:10px;border-radius:50%;background:var(--error);margin-left:-5px}
+.escala .tip{position:absolute;top:4px;width:10px;height:10px;border-radius:50%;border:2px solid var(--texto);background:var(--papel);margin-left:-5px}
+.cifras{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:0.75rem;color:var(--texto-secundario)}
+.cifras b{color:var(--texto);font-family:var(--mono)}
+
+/* recomendacion */
+.rec-cab{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+.rec-cab .esq{font-size:1.375rem;font-weight:700;line-height:1.2}
+.rec-cab .por{font-size:0.875rem;color:var(--texto-secundario);max-width:52ch;margin:4px 0 0}
+.kpis{display:flex;gap:24px}
+.kpis div{font-size:0.75rem;color:var(--texto-secundario)}
+.kpis b{display:block;font-size:1.375rem;color:var(--texto);font-variant-numeric:tabular-nums}
+.antes-despues{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;margin-top:6px}
+.col{display:flex;flex-direction:column;border:1px solid var(--borde-suave);border-radius:6px;overflow:hidden;min-width:0}
+.col i{display:block;height:34px}
+.col i + i{border-top:2px solid var(--papel)}
+.col span{font-family:var(--mono);font-size:0.6875rem;text-align:center;padding:4px 2px;line-height:1.3;overflow-wrap:anywhere}
+.col span b{display:block;font-weight:600;color:var(--texto)}
+.col span em{font-style:normal;color:var(--texto-secundario)}
+.fila-et{display:flex;justify-content:space-between;font-size:0.75rem;color:var(--texto-secundario);margin-top:6px}
+
+/* metodo */
+.metodo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border:1px solid var(--borde-suave);border-radius:8px;overflow:hidden;font-size:0.875rem}
+.metodo div{padding:10px 14px;border-bottom:1px solid var(--borde-suave)}
+.metodo div:nth-child(odd){border-right:1px solid var(--borde-suave)}
+.metodo div:nth-last-child(-n+2){border-bottom:0}
+.metodo dt{font-size:0.75rem;color:var(--texto-secundario)}
+.metodo dd{margin:1px 0 0}
+.aviso{margin:14px 0 0;font-size:0.875rem}
+.aviso b{color:var(--aviso)}
+
+.pie{margin-top:32px;padding-top:14px;border-top:1px solid var(--borde-suave);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:0.75rem;color:var(--texto-secundario)}
+
+/* ---------- pantalla estrecha ---------- */
+@media (max-width:640px){
+  .hoja{margin:0;border-radius:0;border-left:0;border-right:0}
+  .portada,.cuerpo{padding-left:18px;padding-right:18px}
+  .bandas{padding:0 18px}
+  .meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .veredicto{grid-template-columns:1fr}
+  .ver + .ver{border-left:0;border-top:1px solid var(--borde-suave)}
+  .pares{grid-template-columns:1fr}
+  .metodo{grid-template-columns:1fr}
+  .metodo div:nth-child(odd){border-right:0}
+  .metodo div:nth-last-child(2){border-bottom:1px solid var(--borde-suave)}
+  .bfila{grid-template-columns:1fr}
+  .antes-despues{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+
+/* ---------- impresion ---------- */
+@page{size:A4;margin:14mm}
+@media print{
+  body{background:#FFFFFF;font-size:10.5pt}
+  .hoja{margin:0;border:0;border-radius:0;max-width:none}
+  section{break-inside:auto}
+  .veredicto,.parc,.ficha,.col,.metodo,h2,h3{break-inside:avoid}
+  h2,h3{break-after:avoid}
+  .p.ok,.p.ko{border:1px solid currentColor}
+  .env{overflow:visible}
+  .pie{break-inside:avoid;break-before:avoid}
+}
+</style>
+</head>
+<body>
+<article class="hoja">
+
+  <header class="portada">
+    <div class="marca"><div class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></div>Evaluador cromático · reporte generado en el navegador</div>
+    <h1>Reporte de accesibilidad cromática</h1>
+    <p class="sub">Banco de pruebas · panel de gráficos vectoriales (datos de ejemplo)</p>
+    <dl class="meta">
+      <div><dt>Fecha</dt><dd>29/09/2026 · 10:16</dd></div>
+      <div><dt>Deficiencia evaluada</dt><dd>Protanopía, severidad 1,0</dd></div>
+      <div><dt>Extracción</dt><dd>Nivel 1 · DOM y SVG</dd></div>
+      <div><dt>Versión</dt><dd>0.6.4</dd></div>
+      <div style="grid-column:1/-1"><dt>Dirección evaluada</dt><dd class="mono" style="font-weight:500">http://localhost:5500/banco/panel-svg/index.html</dd></div>
+    </dl>
+  </header>
+
+  <div class="bandas">
+    <div class="caja" role="img" aria-label="Las 11 series del dashboard en visión típica y simuladas bajo protanopía">
+      <div class="bfila"><span><b>Visión típica</b>11 series</span><div class="banda" data-b="orig"></div></div>
+      <div class="bfila"><span><b>Protanopía</b>severidad 1,0</span><div class="banda" data-b="sim"></div></div>
+      <p class="nota-banda">Los rojos, naranjas y verdes convergen hacia tonos oliva y grises; el detalle está en las secciones 3 y 4.</p>
+    </div>
+  </div>
+
+  <div class="cuerpo">
+
+    <section>
+      <h2>1. Resultado</h2>
+      <div class="veredicto">
+        <div class="ver"><span class="d">Contraste WCAG 2.1</span><span class="v mal">7<small>de 16</small></span><span class="t">pares incumplen el umbral</span></div>
+        <div class="ver"><span class="d">Distinguibilidad bajo protanopía</span><span class="v mal">4<small>de 55</small></span><span class="t">pares por debajo de ΔE00 10</span></div>
+        <div class="ver"><span class="d">Recomendación</span><span class="esq">Tol cualitativo de 12</span><span class="t">propuesta validada, ΔE00 mínimo 13,33</span></div>
+      </div>
+      <p class="resumen-texto">La paleta necesita ajustes. Siete objetos gráficos no alcanzan 3:1 contra el fondo y cuatro pares de series se confunden bajo protanopía. La propuesta del apartado 5 corrige los dos problemas para las ocho series consideradas.</p>
+    </section>
+
+    <section>
+      <h2>2. Paleta detectada <small>15 colores</small></h2>
+      <p class="intro">Cada ficha muestra el color declarado en la página a la izquierda y su versión simulada a la derecha, con su papel y su peso en la página.</p>
+      <div class="rejilla" data-paleta></div>
+    </section>
+
+    <section>
+      <h2>3. Contraste <small>7 incumplen</small></h2>
+      <p class="intro">Relación de contraste según las WCAG 2.1, calculada sobre los colores declarados. La escala es logarítmica de 1:1 a 21:1; la línea marca el umbral.</p>
+      <h3>1.4.3 Texto sobre fondo <span>· umbral 4,5:1</span></h3>
+      <div class="env"><table class="tabla" data-texto></table></div>
+      <h3>1.4.11 Objetos gráficos <span>· umbral 3:1</span></h3>
+      <div class="env"><table class="tabla" data-graf></table></div>
+    </section>
+
+    <section>
+      <h2>4. Distinguibilidad <small>4 de 55 pares</small></h2>
+      <p class="intro">Diferencia CIEDE2000 entre cada par de series ya simuladas. La matriz es simétrica, por lo que solo se muestra la mitad inferior. En negrita sobre fondo rojizo, los pares por debajo del umbral 10.</p>
+      <div class="env"><table class="matriz" data-matriz></table></div>
+      <div class="pares" data-pares></div>
+    </section>
+
+    <section>
+      <h2>5. Recomendación</h2>
+      <div class="rec-cab">
+        <div><div class="esq">Tol cualitativo de 12</div>
+          <p class="por">Primer esquema del catálogo acreditado para protanopía con capacidad para las 8 series consideradas que superó la revalidación a severidad máxima. Familia indicada: categórica.</p></div>
+        <div class="kpis"><div><b>3</b>esquemas probados</div><div><b>3</b>sustituciones</div><div><b class="mono">13,33</b>ΔE00 mínimo</div></div>
+      </div>
+      <div class="antes-despues" data-ad></div>
+      <div class="fila-et"><span>Arriba: color original · Abajo: color propuesto</span><span>8 de 11 series consideradas</span></div>
+    </section>
+
+    <section>
+      <h2>6. Método y declaraciones</h2>
+      <dl class="metodo">
+        <div><dt>Contraste</dt><dd>Fórmula literal de las WCAG 2.1, criterios 1.4.3 y 1.4.11</dd></div>
+        <div><dt>Diferencia de color</dt><dd>CIEDE2000 (Sharma, Wu y Dalal, 2005)</dd></div>
+        <div><dt>Simulación protan y deutan</dt><dd>Machado, Oliveira y Fernandes (2009)</dd></div>
+        <div><dt>Simulación tritan</dt><dd>Brettel, Viénot y Mollon (1997)</dd></div>
+        <div><dt>Umbral de confusión</dt><dd>ΔE00 &lt; 10 entre series simuladas</dd></div>
+        <div><dt>Evaluación</dt><dd>Exacta: todos los colores con elemento asociado</dd></div>
+      </dl>
+    </section>
+
+    <footer class="pie">
+      <span>Generado localmente por Evaluador cromático 0.6.4. Ningún dato de la página salió del navegador.</span>
+      <span>Preparado para imprimir en A4</span>
+    </footer>
+  </div>
+</article>
+
+<script>
+const orig=["#4E79A7","#FFFFFF","#000000","#F28E2B","#E15759","#EDC948","#C9CFD6","#76B7B2","#59A14F","#A8CFCB","#2C7873"];
+const sim =["#667BA9","#FFFFFF","#000000","#AC9918","#7A7358","#DEC636","#CDCFD6","#B0B1B2","#A59548","#CBCBCB","#717273"];
+const paleta=[["#5A6572","#606573","texto","36,8 %"],["#4E79A7","#667BA9","serie","11,2 %"],["#FFFFFF","#FFFFFF","fondo","8,8 %"],
+ ["#000000","#000000","serie","6,4 %"],["#F28E2B","#AC9918","serie","6,4 %"],["#E15759","#7A7358","serie","6,4 %"],["#EDC948","#DEC636","serie","6,4 %"],
+ ["#C9CFD6","#CDCFD6","eje","4,8 %"],["#21262B","#24262B","texto","4,0 %"],["#E3E6EA","#E5E6EA","borde","3,2 %"],["#76B7B2","#B0B1B2","serie","1,6 %"],
+ ["#59A14F","#A59548","serie","1,6 %"],["#A8CFCB","#CBCBCB","serie","0,8 %"],["#2C7873","#717273","serie","0,8 %"],["#0B57D0","#0068D4","texto","0,8 %"]];
+const texto=[["#5A6572",5.93,"46 elementos"],["#0B57D0",6.39,"1 enlace"],["#21262B",15.25,"5 encabezados"]];
+const graf=[["#FFFFFF",1.00,"6 separadores"],["#E3E6EA",1.25,"4 bordes de tarjeta"],["#C9CFD6",1.57,"6 ejes"],["#EDC948",1.61,"6 series"],
+ ["#A8CFCB",1.69,"1 área"],["#76B7B2",2.29,"1 serie"],["#F28E2B",2.42,"6 series"],["#59A14F",3.16,"1 serie"],["#E15759",3.68,"6 series"],
+ ["#4E79A7",4.55,"12 series"],["#2C7873",5.20,"1 área"],["#000000",21.00,"8 elementos"]];
+const M=[[],[38.9],[41.7,100],[48.4,36.2,56.1],[31.3,39.8,37.0,21.7],[53.7,30.1,75.1,12.8,32.0],[28.7,11.0,74.9,34.0,32.5,31.8],
+ [24.0,18.1,60.2,27.9,24.3,28.7,8.4],[43.4,34.1,52.8,6.2,16.9,16.0,30.8,24.1],[29.6,11.4,72.7,29.6,29.8,27.3,3.7,6.8,26.5],[16.7,38.4,34.7,30.5,12.7,38.7,28.9,21.2,26.1,27.8]];
+const pares=[["#C9CFD6","#A8CFCB","#CDCFD6","#CBCBCB",3.65,13.44,"Solo bajo simulación"],["#F28E2B","#59A14F","#AC9918","#A59548",6.16,44.59,"Solo bajo simulación"],
+ ["#76B7B2","#A8CFCB","#B0B1B2","#CBCBCB",6.85,9.17,"También en visión típica"],["#C9CFD6","#76B7B2","#CDCFD6","#B0B1B2",8.36,20.13,"Solo bajo simulación"]];
+const recO=["#4E79A7","#F28E2B","#E15759","#EDC948","#76B7B2","#59A14F","#A8CFCB","#2C7873"];
+const recP=["#6699CC","#AA4466","#CC6677","#661100","#332288","#999933","#AA4499","#117733"];
+const c1=n=>n.toFixed(1).replace(".",","), c2=n=>n.toFixed(2).replace(".",",");
+const q=s=>document.querySelector(s);
+
+const banda=(sel,a)=>{q(`[data-b="${sel}"]`).innerHTML=a.map(c=>`<i style="background:${c}"></i>`).join("")};
+banda("orig",orig);banda("sim",sim);
+
+q("[data-paleta]").innerHTML=paleta.map(([o,s,r,pct])=>`<div class="ficha"><div class="dos"><i style="background:${o}"></i><i style="background:${s}"></i></div>
+ <div class="dat"><span class="hx">${o}</span><span class="sim">simulado ${s}</span><span class="rol">${r} · ${pct}</span></div></div>`).join("");
+
+const L=Math.log(21);const px=r=>(Math.log(r)/L*100);
+const eje=`<div class="eje-c">${[1,3,4.5,7,21].map(v=>`<span style="left:${px(v)}%">${String(v).replace(".",",")}</span>`).join("")}</div>`;
+const fila=(muestra,hex,r,umb,q2)=>{const ok=r>=umb;return `<tr><td>${muestra}</td>
+ <td><span class="mono">${hex}</span> <span class="sec">sobre</span> <span class="mono">#FFFFFF</span><br><span class="sec" style="font-size:.8125rem">${q2}</span></td>
+ <td class="num">${c2(r)}:1</td>
+ <td style="width:34%"><div class="escala-c"><div class="pista"></div><div class="zona" style="width:${px(umb)}%"></div><div class="umb" style="left:${px(umb)}%"></div><div class="pt ${ok?"ok":"ko"}" style="left:${px(r)}%"></div></div>${eje}</td>
+ <td><span class="p ${ok?"ok":"ko"}">${ok?"Cumple":"Incumple"}</span></td></tr>`};
+const cab=`<thead><tr><th>Muestra</th><th>Colores y elementos</th><th>Relación</th><th>Escala</th><th>Veredicto</th></tr></thead>`;
+q("[data-texto]").innerHTML=cab+"<tbody>"+texto.map(([h,r,e])=>fila(`<div class="aa" style="color:${h};background:#FFFFFF">Aa</div>`,h,r,h==="#21262B"&&e.includes("encab")?4.5:4.5,e)).join("")+"</tbody>";
+q("[data-graf]").innerHTML=cab+"<tbody>"+graf.map(([h,r,e])=>fila(`<div class="obj" style="background:#FFFFFF"><i style="background:${h};outline:${h==="#FFFFFF"?"1px dashed #64707F":"none"}"></i></div>`,h,r,3,e)).join("")+"</tbody>";
+
+let t=`<thead><tr><th></th>${orig.slice(0,10).map((c,i)=>`<th><span class="m" style="background:${c}" title="${c}"></span><small>${i+1}</small></th>`).join("")}</tr></thead><tbody>`;
+for(let i=1;i<11;i++){t+=`<tr><th class="fila"><span class="m" style="background:${orig[i]}"></span> ${i+1}</th>`;
+ for(let j=0;j<10;j++){ if(j<i){const v=M[i][j],x=v<10;t+=`<td class="${x?"x":""}">${c1(v)}${x?'<span class="solo-lector"> confundible</span>':""}</td>`} else t+=`<td class="n"></td>`; }
+ t+="</tr>";}
+q("[data-matriz]").innerHTML=t+"</tbody>";
+
+const pos=v=>Math.min(v,50)/50*100;
+q("[data-pares]").innerHTML=pares.map(([a,b,sa,sb,s,tp,nota])=>`<div class="parc">
+ <div class="top"><span class="m" style="background:${a}"></span>${a}<span class="m" style="background:${b}"></span>${b}<span class="p ko">Confundible</span></div>
+ <div class="chips-f"><span>Típica</span><div class="chips"><i style="background:${a}"></i><i style="background:${b}"></i></div>
+  <span>Protanopía</span><div class="chips"><i style="background:${sa}"></i><i style="background:${sb}"></i></div></div>
+ <div class="escala" aria-hidden="true"><div class="pista"></div><div class="zona" style="width:20%"></div><div class="umbral" style="left:20%"></div>
+  <div class="tip" style="left:${pos(tp)}%"></div><div class="sim" style="left:${pos(s)}%"></div></div>
+ <div class="cifras"><span>Simulado <b>${c2(s)}</b> · típico <b>${c2(tp)}</b></span><span>${nota}</span></div></div>`).join("");
+
+q("[data-ad]").innerHTML=recO.map((o,i)=>`<div class="col"><i style="background:${o}"></i><i style="background:${recP[i]}"></i>
+ <span><b>${o}</b><em>${recP[i]}</em></span></div>`).join("");
+</script>
+</body>
+</html>

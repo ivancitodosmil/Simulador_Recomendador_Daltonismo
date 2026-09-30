@@ -1,183 +1,268 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Evaluador cromático de dashboards</title>
+  <!-- Tema elegido a mano, aplicado antes del primer pintado (sin parpadeo). -->
+  <script src="tema.js"></script>
   <link rel="stylesheet" href="../estilos/tokens.css">
   <link rel="stylesheet" href="../estilos/componentes.css">
 </head>
+
 <body class="panel">
-  <header class="panel-cabecera">
-    <img class="panel-logo" src="../../../assets/iconos/icono-128.png" alt="" width="44" height="44">
-    <h1>Evaluador cromático</h1>
-    <p class="descripcion">Extrae la paleta del dashboard de la pestaña activa, simula cómo la percibe una persona con daltonismo y evalúa su accesibilidad.</p>
-  </header>
-
-  <main>
-    <!-- Controles de simulación (sprint 2), integrados en el panel. -->
-    <fieldset class="simulacion tarjeta">
-      <legend>Simulación de daltonismo</legend>
-
-      <div class="campo">
-        <label for="deficiency-select">Tipo de deficiencia</label>
-        <select id="deficiency-select"
-                aria-label="Tipo de deficiencia de percepción del color a simular">
-          <option value="none">Ninguna (vista original)</option>
-          <option value="protanopia">Protanopía</option>
-          <option value="deuteranopia">Deuteranopía</option>
-          <option value="tritanopia">Tritanopía</option>
-        </select>
+  <!-- Raíz: contenedor de referencia de las consultas de contenedor. -->
+  <div class="panel-raiz">
+    <!-- Cabecera fija: logotipo, nombre, línea de estado y selector de tema. -->
+    <header class="cab">
+      <img class="logo" src="../../../assets/iconos/icono-48.png" alt="" width="26" height="26">
+      <div class="cab-texto">
+        <b>Evaluador cromático</b>
+        <small id="tab-state">Pestaña sin evaluar</small>
       </div>
-
-      <div class="campo">
-        <label for="severity-slider">Severidad</label>
-        <div class="campo-deslizador">
-          <input type="range" id="severity-slider" min="0" max="1" step="0.1" value="1"
-                 aria-label="Severidad de la simulación, de cero a uno en pasos de una décima">
-          <!-- Valor numérico siempre visible junto al control. -->
-          <output id="severity-value" for="severity-slider">1,0</output>
-        </div>
+      <div class="tema" id="theme-group" role="radiogroup"
+        aria-label="Tema del panel; sin elegir, sigue la preferencia del sistema">
+        <button type="button" role="radio" aria-checked="false" data-tema="claro" tabindex="0">Claro</button>
+        <button type="button" role="radio" aria-checked="false" data-tema="oscuro" tabindex="-1">Oscuro</button>
       </div>
+    </header>
 
-      <!-- Nota visible SOLO al seleccionar tritanopía. -->
-      <p id="severity-note" class="nota-control" hidden>
-        La severidad se deshabilita en tritanopía: el método de Brettel (1997) modela la
-        dicromatopsia completa y no admite graduación.
-      </p>
-    </fieldset>
+    <main class="cuerpo">
+      <!-- Región en vivo solo para lectores de pantalla: anuncia lo que ya se
+         ve en la cabecera, en el desplegable y en el marcador. -->
+      <p id="panel-announcer" class="solo-lector" role="status" aria-live="polite"></p>
 
-    <!-- Botón único de evaluación, debajo de la simulación. -->
-    <button id="evaluate-button" class="boton boton--primario boton--bloque" type="button"
+      <!-- 1. Simulación: siempre abierta, con el botón de evaluar dentro. -->
+      <section class="bloque" aria-labelledby="simulation-heading">
+        <div class="in">
+          <div class="tit">
+            <h2 id="simulation-heading">Simulación</h2><span>Esta pestaña</span>
+          </div>
+          <div>
+            <label class="et" for="deficiency-select">Tipo de deficiencia</label>
+            <select id="deficiency-select"
+              aria-label="Tipo de deficiencia a simular en esta pestaña; elegir una la aplica sobre la página y Ninguna la retira">
+              <option value="none">Ninguna</option>
+              <option value="protanopia">Protanopía</option>
+              <option value="deuteranopia">Deuteranopía</option>
+              <option value="tritanopia">Tritanopía</option>
+            </select>
+          </div>
+          <div>
+            <label class="et" for="severity-slider">Severidad</label>
+            <div class="fila-sev">
+              <input type="range" id="severity-slider" min="0" max="1" step="0.1" value="1"
+                aria-label="Severidad de la simulación, de cero a uno en pasos de una décima">
+              <output id="severity-value" class="mono" for="severity-slider">1,0</output>
+            </div>
+          </div>
+          <p id="simulation-help" class="ayuda">Se aplica solo a esta pestaña. Elige «Ninguna» para ver
+            los colores originales.</p>
+          <button id="evaluate-button" class="btn prim" type="button"
             aria-label="Extraer la paleta de colores y evaluar la página actual">
-      Extraer paleta y evaluar
-    </button>
-
-    <!-- Estado con icono de forma distinta + texto: nunca solo color. -->
-    <p id="panel-status" class="estado" role="status" aria-live="polite"></p>
-
-    <!-- Aviso de evaluación aproximada (nivel 3 de extracción). -->
-    <p id="approximate-notice" class="aviso" hidden>
-      <span class="estado-icono" aria-hidden="true">▲</span>
-      <span>Evaluación aproximada: parte de la paleta proviene de la captura de pantalla
-      (nivel 3) y perdió la relación color-elemento, así que el contraste solo cubre los
-      colores con elemento identificado.</span>
-    </p>
-
-    <p id="empty-state" class="descripcion descripcion--centrada">
-      Aún no hay ninguna evaluación de esta pestaña. Pulsa «Extraer paleta y evaluar».
-    </p>
-
-    <section id="palette-section" class="tarjeta" aria-labelledby="palette-summary" hidden>
-      <h2 id="palette-summary">Paleta detectada</h2>
-      <p id="levels" class="niveles"></p>
-      <!-- Paleta original y simulada en paralelo; cada muestra con su hex al lado. -->
-      <div class="paleta-encabezados" aria-hidden="true">
-        <span>Original</span>
-        <span id="simulated-header">Simulada</span>
-      </div>
-      <ul id="palette-list" class="paleta-lista"></ul>
-    </section>
-
-    <section id="contrast-section" class="tarjeta" aria-labelledby="contrast-heading" hidden>
-      <h2 id="contrast-heading">Contraste WCAG 2.1</h2>
-
-      <!-- Origen de cada cifra: sin esta nota, contraste y ΔE00 parecerían medir lo mismo. -->
-      <p class="nota-metodo">
-        El contraste se calcula sobre los colores declarados en la página; la diferencia de
-        color ΔE00, sobre esos colores transformados por la simulación seleccionada.
-        Son magnitudes distintas sobre entradas distintas.
-      </p>
-
-      <h3>Criterio 1.4.3 · Texto sobre fondo
-        <span class="insignia">umbral 4,5:1 · texto grande 3:1</span>
-      </h3>
-      <ul id="text-pairs" class="lista-pares"></ul>
-
-      <h3>Criterio 1.4.11 · Objetos gráficos sobre su fondo
-        <span class="insignia">umbral 3:1</span>
-      </h3>
-      <ul id="graphic-pairs" class="lista-pares"></ul>
-    </section>
-
-    <section id="distinguishability-section" class="tarjeta" aria-labelledby="distinguishability-heading" hidden>
-      <h2 id="distinguishability-heading">Distinguibilidad entre series</h2>
-      <p id="distinguishability-config" class="niveles"></p>
-
-      <div class="campo campo--en-linea">
-        <label for="threshold-input">Umbral de confusión ΔE00</label>
-        <input type="number" id="threshold-input" min="1" max="30" step="0.5" value="10"
-               aria-label="Umbral de diferencia de color por debajo del cual dos series se consideran confundibles">
-      </div>
-
-      <div id="matrix-container" class="matriz-envoltorio" tabindex="0"
-           role="group" aria-label="Matriz de diferencias de color CIEDE2000 entre series simuladas"></div>
-
-      <h3>Series comparadas
-        <span class="insignia">original → simulada</span>
-      </h3>
-      <ol id="series-legend" class="leyenda-series"></ol>
-
-      <h3>Pares conflictivos
-        <span class="insignia">detalle desplegable en cada par</span>
-      </h3>
-      <ul id="conflict-list" class="lista-pares"></ul>
-    </section>
-
-    <section id="recommendation-section" class="tarjeta" aria-labelledby="recommendation-heading" hidden>
-      <h2 id="recommendation-heading">Recomendación de paleta</h2>
-
-      <!-- Paso 1 del algoritmo: la familia la indica el usuario. -->
-      <div class="campo">
-        <label for="family-select">Familia de la paleta del dashboard</label>
-        <select id="family-select"
-                aria-label="Familia de la paleta del dashboard: categórica o secuencial">
-          <option value="qualitative">Categórica (series independientes)</option>
-          <option value="sequential">Secuencial (magnitud ordenada)</option>
-        </select>
-      </div>
-
-      <!-- Advertencia fija: la constancia de la propuesta no es un fallo. -->
-      <p class="nota-metodo">
-        La propuesta se calcula siempre con la simulación a severidad máxima (1,0),
-        para que dos corridas den el mismo resultado; por eso no cambia al mover el
-        deslizador de severidad.
-      </p>
-
-      <!-- Ajuste del Sprint 4: la selección define la entrada del algoritmo. -->
-      <h3>Series consideradas
-        <span class="insignia">solo afecta a la recomendación</span>
-      </h3>
-      <p class="color-meta">
-        Desmarca los colores que no sean categorías de datos (fondos, ejes, cuadrículas).
-        La matriz de distinguibilidad sigue evaluando todo lo visible.
-      </p>
-      <ul id="series-selection" class="lista-seleccion"></ul>
-
-      <!-- Desenlace: propuesta, cumplimiento sin reemplazo o aviso de rediseño. -->
-      <p id="recommendation-status" class="estado"></p>
-
-      <div id="recommendation-body" hidden>
-        <p id="recommendation-reason" class="niveles"></p>
-        <div class="paleta-encabezados" aria-hidden="true">
-          <span>Original</span>
-          <span>Propuesta</span>
+            Extraer paleta y evaluar
+          </button>
+          <!-- Región en vivo visible: errores, avisos y confirmaciones con
+             información nueva (nunca lo que ya está en otra parte). -->
+          <p id="panel-status" class="estado" role="status" aria-live="polite" hidden></p>
         </div>
-        <ul id="recommendation-mapping" class="paleta-lista"></ul>
+      </section>
 
-        <!-- Conmutador de previsualización (RF07). -->
-        <div class="campo campo--en-linea campo--conmutador">
-          <input type="checkbox" id="preview-toggle"
-                 aria-label="Previsualizar la paleta propuesta sobre la página; al desmarcar, la página recupera sus colores originales">
-          <label for="preview-toggle">Previsualizar la propuesta en la página</label>
+      <!-- Estado inicial: en el lugar del resumen, una línea. -->
+      <p id="empty-state" class="vacio">
+        Al evaluar aparecerán aquí el resumen con la paleta, el contraste, la distinguibilidad y la recomendación.
+      </p>
+
+      <!-- 2. Resumen: bandas de la paleta y marcador de cuatro datos. -->
+      <section id="summary-block" class="bloque" aria-labelledby="summary-heading" hidden>
+        <div class="in in--resumen">
+          <div class="tit">
+            <h2 id="summary-heading">Resumen</h2><span id="summary-series"></span>
+          </div>
+          <div class="franja" id="summary-bands" aria-label="Series consideradas en visión típica y bajo la simulación">
+            <div class="fila"><span>Visión típica</span>
+              <div class="banda" id="band-original"></div>
+            </div>
+            <div class="fila"><span id="band-simulated-label">Sin simulación</span>
+              <div class="banda" id="band-simulated"></div>
+            </div>
+          </div>
         </div>
-        <p id="preview-note" class="color-meta" hidden>
-          Los gráficos dibujados en canvas no tienen elementos recoloreables: la
-          previsualización no los modifica (la tabla de correspondencia sigue aplicando).
-        </p>
+        <div class="marcador" role="group" aria-label="Marcador de la evaluación">
+          <div class="dato" id="stat-contrast">
+            <span class="d">Contraste WCAG</span>
+            <span class="v" id="stat-contrast-value"></span>
+            <span class="e" id="stat-contrast-text"></span>
+          </div>
+          <div class="dato" id="stat-conflicts">
+            <span class="d">Distinguibilidad</span>
+            <span class="v" id="stat-conflicts-value"></span>
+            <span class="e" id="stat-conflicts-text"></span>
+          </div>
+          <div class="dato" id="stat-level">
+            <span class="d">Extracción</span>
+            <span class="v" id="stat-level-value"></span>
+            <span class="e" id="stat-level-text"></span>
+          </div>
+          <div class="dato" id="stat-approx">
+            <span class="d">Evaluación</span>
+            <span class="v" id="stat-approx-value"></span>
+            <span class="e" id="stat-approx-text"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Aviso de evaluación aproximada (nivel 3): párrafo que empieza por «Aviso». -->
+      <p id="approximate-notice" class="estado" hidden>
+        <strong class="estado-marca estado-marca--aviso">Aviso</strong>
+        Evaluación aproximada: parte de la paleta proviene de la captura de pantalla
+        (nivel 3) y perdió la relación color-elemento, así que el contraste solo cubre los
+        colores con elemento identificado.
+      </p>
+
+      <!-- 3. Paleta -->
+      <details class="bloque" id="palette-section" data-section="paleta" hidden>
+        <summary>
+          <h2>Paleta detectada</h2><span id="palette-count"></span>
+        </summary>
+        <div class="in">
+          <p id="levels" class="ayuda"></p>
+          <div class="tabla-pal">
+            <div class="cab-t" aria-hidden="true"><span></span><span>Original</span><span
+                id="simulated-header">Simulada</span></div>
+            <div id="palette-list"></div>
+          </div>
+        </div>
+      </details>
+
+      <!-- 4. Contraste -->
+      <details class="bloque" id="contrast-section" data-section="contraste" hidden open>
+        <summary>
+          <h2>Contraste</h2><span id="contrast-count"></span>
+        </summary>
+        <div class="in">
+          <div class="grupo-c">
+            <h3>1.4.3 Texto <span>· umbral 4,5:1 · texto grande 3:1</span></h3>
+            <div id="text-pairs"></div>
+          </div>
+          <div class="grupo-c">
+            <h3>1.4.11 Objetos gráficos <span>· umbral 3:1</span></h3>
+            <div id="graphic-pairs"></div>
+          </div>
+          <!-- Origen de cada cifra: sin esta nota, contraste y ΔE00 parecerían medir lo mismo. -->
+          <p class="ayuda">
+            El contraste se calcula sobre los colores declarados en la página; la diferencia de
+            color ΔE00, sobre esos colores transformados por la simulación seleccionada.
+          </p>
+        </div>
+      </details>
+
+      <!-- 5. Distinguibilidad -->
+      <details class="bloque" id="distinguishability-section" data-section="distinguibilidad" hidden open>
+        <summary>
+          <h2>Distinguibilidad</h2><span id="distinguishability-count"></span>
+        </summary>
+        <div class="in">
+          <div class="fila-umbral">
+            <label class="et" for="threshold-input">Umbral de confusión ΔE00</label>
+            <input type="number" id="threshold-input" class="mono" min="1" max="30" step="0.5" value="10"
+              aria-label="Umbral de diferencia de color por debajo del cual dos series se consideran confundibles">
+          </div>
+          <p id="distinguishability-config" class="ayuda"></p>
+          <div class="env-matriz" id="matrix-container" tabindex="0" role="group"
+            aria-label="Matriz de diferencias de color CIEDE2000 entre series simuladas (triángulo inferior)"></div>
+          <p class="leyenda-m" id="matrix-legend"></p>
+          <div class="pares" id="conflict-list"></div>
+        </div>
+      </details>
+
+      <!-- 6. Recomendación -->
+      <section id="recommendation-section" class="bloque" aria-labelledby="recommendation-heading" hidden>
+        <div class="in recomendacion">
+          <div class="recomendacion-entrada">
+            <div class="tit">
+              <h2 id="recommendation-heading">Recomendación</h2><span>Severidad máxima</span>
+            </div>
+            <div>
+              <label class="et" for="family-select">Familia de la paleta</label>
+              <select id="family-select" aria-label="Familia de la paleta del dashboard: categórica o secuencial">
+                <option value="qualitative">Categórica (series independientes)</option>
+                <option value="sequential">Secuencial (magnitud ordenada)</option>
+              </select>
+            </div>
+            <div class="series-res">
+              <span id="series-summary"></span>
+              <button type="button" id="series-review" class="enlace" aria-expanded="false"
+                aria-controls="series-selection">Revisar</button>
+            </div>
+            <!-- Casillas de series consideradas (ajuste S4): se abren desde «Revisar». -->
+            <div id="series-panel" hidden>
+              <p class="ayuda">
+                Desmarca los colores que no sean categorías de datos (fondos, ejes, cuadrículas).
+                La matriz de distinguibilidad sigue evaluando todo lo visible.
+              </p>
+              <ul id="series-selection" class="lista-seleccion"></ul>
+            </div>
+          </div>
+
+          <div class="recomendacion-salida">
+            <div class="esquema">
+              <b id="recommendation-title"></b>
+              <span id="recommendation-reason"></span>
+            </div>
+            <!-- Aviso con información nueva (rediseño, incumplimientos fuera del conjunto). -->
+            <p id="recommendation-notice" class="estado" hidden></p>
+            <!-- Resumen de las tres deficiencias cuando no hay simulación. -->
+            <div id="recommendation-overview" class="lista-rc" hidden></div>
+
+            <div id="recommendation-body" hidden>
+              <div class="kpis">
+                <div><b id="kpi-iterations" class="mono"></b>esquemas probados</div>
+                <div><b id="kpi-swaps" class="mono"></b>sustituciones</div>
+                <div><b id="kpi-delta" class="mono"></b>ΔE00 mínimo</div>
+              </div>
+              <div class="franja" aria-label="Series originales y paleta propuesta">
+                <div class="fila"><span>Original</span>
+                  <div class="banda" id="band-rec-original"></div>
+                </div>
+                <div class="fila"><span>Propuesta</span>
+                  <div class="banda" id="band-rec-proposed"></div>
+                </div>
+              </div>
+              <div class="map">
+                <div class="cab-t" aria-hidden="true"><span>Original</span><span>Propuesta</span></div>
+                <div id="recommendation-mapping"></div>
+              </div>
+              <div class="interruptor">
+                <span id="preview-label">Previsualizar en la página</span>
+                <button type="button" id="preview-toggle" class="sw" role="switch" aria-checked="false"
+                  aria-labelledby="preview-label" aria-describedby="preview-note"></button>
+              </div>
+              <p id="preview-note" class="ayuda" hidden>
+                Los gráficos dibujados en canvas no tienen elementos recoloreables: la
+                previsualización no los modifica (la correspondencia sigue aplicando).
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pie: exportar como botón secundario y limpiar como enlace de texto. -->
+      <div class="pie">
+        <button id="export-button" class="btn secu" type="button" hidden
+          aria-label="Exportar el reporte en PDF: se abre en una pestaña nueva y se guarda con Guardar como PDF">
+          Exportar PDF
+        </button>
+        <button id="clear-button" class="btn texto" type="button"
+          aria-label="Limpiar todo: retirar la simulación y la previsualización y descartar la evaluación de esta pestaña">
+          Limpiar todo
+        </button>
       </div>
-    </section>
-  </main>
+    </main>
+  </div>
 
   <script type="module" src="panel.js"></script>
 </body>
+
 </html>

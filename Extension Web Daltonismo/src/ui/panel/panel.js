@@ -1,58 +1,98 @@
 // ------------------------------------------------------------------
-// Sprints 2-3 · Panel lateral unificado (ajuste de UX post-Sprint 3):
-// concentra en una sola superficie los controles de simulación, el
-// botón de evaluación, la paleta original/simulada y las dos
-// evaluaciones (contraste WCAG y distinguibilidad CIEDE2000).
-// El clic en el icono de la extensión abre este panel directamente
-// (chrome.sidePanel.setPanelBehavior en el service worker).
-// - La evaluación la orquesta el service worker (RUN_EVALUATION) y se
-//   guarda por pestaña en chrome.storage.session.
-// - La matriz se recalcula localmente al cambiar el umbral o la
-//   simulación, sin repetir la extracción.
-// - La configuración de simulación persiste en chrome.storage.local.
+// Panel lateral (iteración 0.6.3): reproducción de la maqueta
+// Pruebas/Docs/maqueta-panel.html con los datos reales de la
+// evaluación. De arriba abajo: cabecera (logotipo, nombre, línea de
+// estado, selector de tema), simulación siempre abierta con el botón
+// de evaluar dentro, resumen (bandas de la paleta + marcador de cuatro
+// datos), paleta, contraste y distinguibilidad plegables,
+// recomendación y pie. Sin iconos ni glifos; ningún estado se comunica
+// solo con color.
+//
+// Tema (0.6.3): mientras el usuario no elige, manda el sistema; la
+// elección se guarda en chrome.storage.local (global) y se espeja en
+// localStorage para que tema.js la aplique antes del primer pintado.
+//
+// Modelo por pestaña (0.6.0): panel habilitado por pestaña desde el
+// service worker; la simulación de la página es por pestaña y su único
+// control es el desplegable (elegir aplica, «Ninguna» retira);
+// evaluation:/sim:/ui:<tabId> en chrome.storage.session; la
+// reconciliación con la página (GET_PAGE_STATE) es la fuente de verdad.
 // ------------------------------------------------------------------
 
-import { rgbToHex } from "../../core/color/conversion.js";
+import { rgbToHex, rgbToLab } from "../../core/color/conversion.js";
 import {
   computeDistinguishability,
   simulateForConfig,
   DEFAULT_CONFUSION_THRESHOLD
 } from "../../core/evaluacion/distinguibilidad.js";
 import { recommendPalette } from "../../core/recomendacion/algoritmo.js";
+import { ciede2000 } from "../../core/color/diferencia.js";
+import { buildReportData } from "../../core/reporte/generador.js";
 
-const evaluateButton = document.getElementById("evaluate-button");
-const statusElement = document.getElementById("panel-status");
-const approximateNotice = document.getElementById("approximate-notice");
-const emptyState = document.getElementById("empty-state");
-const deficiencySelect = document.getElementById("deficiency-select");
-const severitySlider = document.getElementById("severity-slider");
-const severityValue = document.getElementById("severity-value");
-const severityNote = document.getElementById("severity-note");
-const paletteSection = document.getElementById("palette-section");
-const paletteSummary = document.getElementById("palette-summary");
-const levelsElement = document.getElementById("levels");
-const simulatedHeader = document.getElementById("simulated-header");
-const paletteList = document.getElementById("palette-list");
-const contrastSection = document.getElementById("contrast-section");
-const textPairsList = document.getElementById("text-pairs");
-const graphicPairsList = document.getElementById("graphic-pairs");
-const distSection = document.getElementById("distinguishability-section");
-const distConfigElement = document.getElementById("distinguishability-config");
-const thresholdInput = document.getElementById("threshold-input");
-const matrixContainer = document.getElementById("matrix-container");
-const seriesLegend = document.getElementById("series-legend");
-const conflictList = document.getElementById("conflict-list");
-const recommendationSection = document.getElementById("recommendation-section");
-const recommendationStatus = document.getElementById("recommendation-status");
-const recommendationBody = document.getElementById("recommendation-body");
-const recommendationReason = document.getElementById("recommendation-reason");
-const recommendationMapping = document.getElementById("recommendation-mapping");
-const familySelect = document.getElementById("family-select");
-const seriesSelectionList = document.getElementById("series-selection");
-const previewToggle = document.getElementById("preview-toggle");
-const previewNote = document.getElementById("preview-note");
+const byId = (id) => document.getElementById(id);
 
-const STATUS_ICONS = { info: "ℹ", ok: "✔", warning: "▲", error: "✖" };
+const evaluateButton = byId("evaluate-button");
+const clearButton = byId("clear-button");
+const exportButton = byId("export-button");
+const statusElement = byId("panel-status");
+const announcerElement = byId("panel-announcer");
+const tabStateElement = byId("tab-state");
+const themeGroup = byId("theme-group");
+const themeRadios = Array.from(themeGroup.querySelectorAll("[role=radio]"));
+const approximateNotice = byId("approximate-notice");
+const emptyState = byId("empty-state");
+const summaryBlock = byId("summary-block");
+const summarySeries = byId("summary-series");
+const bandOriginal = byId("band-original");
+const bandSimulated = byId("band-simulated");
+const bandSimulatedLabel = byId("band-simulated-label");
+const statContrastValue = byId("stat-contrast-value");
+const statContrastText = byId("stat-contrast-text");
+const statConflictsValue = byId("stat-conflicts-value");
+const statConflictsText = byId("stat-conflicts-text");
+const statLevelValue = byId("stat-level-value");
+const statLevelText = byId("stat-level-text");
+const statApproxValue = byId("stat-approx-value");
+const statApproxText = byId("stat-approx-text");
+const deficiencySelect = byId("deficiency-select");
+const severitySlider = byId("severity-slider");
+const severityValue = byId("severity-value");
+const simulationHelp = byId("simulation-help");
+const paletteSection = byId("palette-section");
+const paletteCount = byId("palette-count");
+const levelsElement = byId("levels");
+const simulatedHeader = byId("simulated-header");
+const paletteList = byId("palette-list");
+const contrastSection = byId("contrast-section");
+const contrastCount = byId("contrast-count");
+const textPairsList = byId("text-pairs");
+const graphicPairsList = byId("graphic-pairs");
+const distSection = byId("distinguishability-section");
+const distCount = byId("distinguishability-count");
+const distConfigElement = byId("distinguishability-config");
+const thresholdInput = byId("threshold-input");
+const matrixContainer = byId("matrix-container");
+const matrixLegend = byId("matrix-legend");
+const conflictList = byId("conflict-list");
+const recommendationSection = byId("recommendation-section");
+const recommendationTitle = byId("recommendation-title");
+const recommendationReason = byId("recommendation-reason");
+const recommendationNotice = byId("recommendation-notice");
+const recommendationOverview = byId("recommendation-overview");
+const recommendationBody = byId("recommendation-body");
+const recommendationMapping = byId("recommendation-mapping");
+const kpiIterations = byId("kpi-iterations");
+const kpiSwaps = byId("kpi-swaps");
+const kpiDelta = byId("kpi-delta");
+const bandRecOriginal = byId("band-rec-original");
+const bandRecProposed = byId("band-rec-proposed");
+const familySelect = byId("family-select");
+const seriesSummary = byId("series-summary");
+const seriesReview = byId("series-review");
+const seriesPanel = byId("series-panel");
+const seriesSelectionList = byId("series-selection");
+const previewToggle = byId("preview-toggle");
+const previewNote = byId("preview-note");
 
 const SIMULATION_LABELS = {
   none: "sin simulación",
@@ -67,6 +107,8 @@ const LEVEL_LABELS = {
   "capture": "Nivel 3 · Captura de pestaña (aproximado)"
 };
 
+const LEVEL_SHORT = { "dom-svg": "DOM y SVG", "canvas": "canvas", "capture": "captura" };
+
 const ROLE_LABELS = {
   background: "fondo",
   text: "texto",
@@ -76,33 +118,46 @@ const ROLE_LABELS = {
 
 const ERROR_MESSAGES = {
   "unsupported-page": "Esta página no se puede evaluar: es una página interna del navegador o de la tienda de extensiones.",
-  "no-access": "La extensión aún no tiene acceso a esta pestaña. Haz clic en el icono de la extensión con esa pestaña en primer plano (permiso activeTab) y vuelve a pulsar «Extraer paleta y evaluar».",
+  "no-access": "La extensión aún no tiene acceso a esta pestaña. Haz clic en el icono de la extensión con esa pestaña en primer plano y vuelve a pulsar «Extraer paleta y evaluar».",
   "no-active-tab": "No se encontró una pestaña activa que evaluar.",
   "injection-failed": "No se pudo acceder a la página para analizarla.",
   "extraction-failed": "La extracción falló dentro de la página.",
   "unexpected": "Ocurrió un error inesperado durante la evaluación."
 };
 
+const SIMULATION_HELP = {
+  default: "Se aplica solo a esta pestaña. Elige «Ninguna» para ver los colores originales.",
+  tritanopia: "En tritanopía la severidad no se gradúa (método de Brettel) y el filtro sobre la página es una aproximación; la paleta del panel usa el cálculo exacto."
+};
+
 // Máximo de series en la matriz (coherente con el service worker).
 const MAX_SERIES_COLORS = 20;
+
+// Escala de las cifras de los pares conflictivos (ΔE00 de 0 a 50).
+const SCALE_MAX = 50;
 
 const state = {
   tabId: null,
   evaluation: null,
   threshold: DEFAULT_CONFUSION_THRESHOLD,
   simulation: { type: "none", severity: 1 },
-  // Última matriz calculada, para el detalle de pares.
   series: [],
   simulatedRgbs: [],
   distSimulated: null,
   distOriginal: null,
-  // Recomendación de paleta (sprint 4).
+  filterOnPage: false,
   family: "qualitative",
   recommendation: null,
   previewActive: false,
-  // Series consideradas: hex → incluido en la recomendación (ajuste S4).
   seriesSelection: new Map(),
-  selectionSource: null
+  seriesNotes: new Map(),
+  selectionSource: null,
+  ui: { family: null, collapsed: {}, scrollY: 0, selection: null, selectionEvaluatedAt: null },
+  restoringSections: false,
+  suggestionAdopted: null,
+  theme: null,
+  // Desenlace bajo las tres deficiencias (sin simulación), para el reporte.
+  overview: null
 };
 
 /** Número con coma decimal. */
@@ -110,52 +165,160 @@ function formatNumber(value, decimals = 2) {
   return Number(value).toFixed(decimals).replace(".", ",");
 }
 
-/** Pinta un estado (icono de forma distinta + texto) en el elemento dado. */
-function renderStatusInto(element, kind, text) {
-  element.className = "estado estado--" + kind;
-  element.replaceChildren();
-  const icon = document.createElement("span");
-  icon.className = "estado-icono";
-  icon.setAttribute("aria-hidden", "true");
-  icon.textContent = STATUS_ICONS[kind] || STATUS_ICONS.info;
-  const message = document.createElement("span");
-  message.textContent = text;
-  element.append(icon, message);
+/** Primera letra en mayúscula. */
+function capitalize(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-/** Estado principal del panel. */
+/** Crea un elemento con clase y texto opcionales. */
+function el(tag, className = "", text = null) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== null) node.textContent = text;
+  return node;
+}
+
+// ------------------------------------------------------------------
+// Tema: sistema por defecto, elección manual global y sin parpadeo
+// ------------------------------------------------------------------
+
+/** Aplica el tema (null = seguir al sistema) y sincroniza el grupo. */
+function applyTheme(theme) {
+  state.theme = theme === "claro" || theme === "oscuro" ? theme : null;
+  const root = document.documentElement;
+  if (state.theme) root.setAttribute("data-tema", state.theme);
+  else root.removeAttribute("data-tema");
+  try {
+    // Espejo síncrono para tema.js (antes del primer pintado).
+    if (state.theme) localStorage.setItem("tema", state.theme);
+    else localStorage.removeItem("tema");
+  } catch (error) {
+    // Sin localStorage: el tema se aplica igualmente en esta sesión.
+  }
+  themeRadios.forEach((radio, index) => {
+    const checked = radio.dataset.tema === state.theme;
+    radio.setAttribute("aria-checked", String(checked));
+    // Tabulación itinerante: la elegida, o la primera si manda el sistema.
+    radio.tabIndex = checked || (!state.theme && index === 0) ? 0 : -1;
+  });
+}
+
+/** Lee la preferencia global guardada (chrome.storage.local). */
+async function loadTheme() {
+  try {
+    const stored = await chrome.storage.local.get(["tema"]);
+    applyTheme(stored.tema || null);
+  } catch (error) {
+    applyTheme(null);
+  }
+}
+
+/** Elección manual: se aplica, se guarda y vale para todas las pestañas. */
+function chooseTheme(theme) {
+  applyTheme(theme);
+  try {
+    chrome.storage.local.set({ tema: theme });
+  } catch (error) {
+    // Sin almacenamiento: queda aplicado en esta sesión.
+  }
+  const radio = themeRadios.find((item) => item.dataset.tema === theme);
+  if (radio) radio.focus();
+}
+
+// ------------------------------------------------------------------
+// Estado de interfaz por pestaña
+// ------------------------------------------------------------------
+
+function saveUiState() {
+  if (!state.tabId) return;
+  try {
+    chrome.storage.session.set({ ["ui:" + state.tabId]: state.ui });
+  } catch (error) {
+    // Sin almacenamiento se sigue funcionando en memoria.
+  }
+}
+
+let scrollSaveTimer = null;
+
+function scheduleScrollSave() {
+  if (scrollSaveTimer) clearTimeout(scrollSaveTimer);
+  scrollSaveTimer = setTimeout(() => {
+    state.ui.scrollY = window.scrollY;
+    saveUiState();
+  }, 250);
+}
+
+function restoreSectionState() {
+  state.restoringSections = true;
+  for (const section of document.querySelectorAll("details.bloque")) {
+    const key = section.dataset.section;
+    if (!key) continue;
+    // Sin preferencia guardada todas las secciones salen abiertas (0.6.6);
+    // el plegado se recuerda solo en esta pestaña hasta volver a evaluar.
+    const collapsed = state.ui.collapsed && typeof state.ui.collapsed[key] === "boolean"
+      ? state.ui.collapsed[key]
+      : false;
+    section.open = !collapsed;
+  }
+  state.restoringSections = false;
+}
+
+// ------------------------------------------------------------------
+// Estados: texto y forma
+// ------------------------------------------------------------------
+
+function renderStatusInto(element, kind, text) {
+  element.className = "estado";
+  element.replaceChildren();
+  if (kind === "warning" || kind === "error") {
+    const mark = el("strong", "estado-marca estado-marca--" + (kind === "error" ? "error" : "aviso"),
+      kind === "error" ? "Error" : "Aviso");
+    element.append(mark, " ");
+  }
+  element.append(text);
+  element.hidden = false;
+}
+
 function setStatus(kind, text) {
   renderStatusInto(statusElement, kind, text);
 }
 
-/** Estado del bloque de recomendación (cada desenlace con presentación propia). */
-function setRecommendationStatus(kind, text) {
-  renderStatusInto(recommendationStatus, kind, text);
+function clearStatus() {
+  statusElement.textContent = "";
+  statusElement.hidden = true;
 }
 
-/**
- * Estado del botón de evaluación. Tras una evaluación correcta pasa a
- * verde con texto «Evaluación aplicada» (color + texto + icono, nunca
- * solo color); sigue pulsable para volver a evaluar la misma pestaña.
- */
+function announce(text) {
+  announcerElement.textContent = "";
+  setTimeout(() => { announcerElement.textContent = text; }, 50);
+}
+
+function verdictPill(kind, word) {
+  return el("span", "pastilla pastilla--" + kind, word);
+}
+
 function setEvaluateButtonState(done) {
-  evaluateButton.classList.toggle("boton--hecho", done);
-  evaluateButton.textContent = done ? "Evaluación aplicada" : "Extraer paleta y evaluar";
+  evaluateButton.classList.toggle("prim", !done);
+  evaluateButton.classList.toggle("secu", done);
+  evaluateButton.textContent = done ? "Volver a evaluar" : "Extraer paleta y evaluar";
   evaluateButton.setAttribute(
     "aria-label",
-    done
-      ? "Evaluación ya aplicada a esta pestaña; pulsar de nuevo vuelve a evaluarla"
+    done ? "Volver a extraer la paleta y evaluar esta pestaña"
       : "Extraer la paleta de colores y evaluar la página actual"
   );
 }
 
-/**
- * Actualiza la insignia numérica del icono con los incumplimientos
- * vigentes: fallos de contraste (fijos por evaluación) + pares
- * confundibles bajo la simulación y el umbral seleccionados AHORA.
- * Se invoca en cada recálculo, de modo que cambiar el tipo de
- * deficiencia refresca la insignia sin volver a evaluar la página.
- */
+function renderTabState() {
+  const evaluation = state.evaluation;
+  if (evaluation && evaluation.ok) {
+    const when = new Date(evaluation.evaluatedAt || Date.now());
+    const time = when.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    tabStateElement.textContent = "Evaluada a las " + time + " · " + Math.round(evaluation.elapsedMs || 0) + " ms";
+  } else {
+    tabStateElement.textContent = "Pestaña sin evaluar";
+  }
+}
+
 function updateBadge() {
   if (!state.tabId || !state.evaluation || !state.evaluation.ok) return;
   const contrast = state.evaluation.contrast || { text: [], graphics: [] };
@@ -163,343 +326,347 @@ function updateBadge() {
     (contrast.text || []).filter((group) => !group.passes).length +
     (contrast.graphics || []).filter((group) => !group.passes).length;
   const conflictCount = state.distSimulated ? state.distSimulated.conflicts.length : 0;
-  const badgeText = String(failingContrast + conflictCount);
-  chrome.action.setBadgeBackgroundColor({ color: "#965860", tabId: state.tabId }).catch(() => {});
-  chrome.action.setBadgeText({ text: badgeText, tabId: state.tabId }).catch(() => {});
-}
-
-/** Muestra decorativa + hex como texto al lado. */
-function colorChip(hex) {
-  const chip = document.createElement("span");
-  chip.className = "color-celda";
-  const swatch = document.createElement("span");
-  swatch.className = "muestra-color";
-  swatch.style.backgroundColor = hex;
-  swatch.setAttribute("aria-hidden", "true");
-  const code = document.createElement("code");
-  code.className = "hex";
-  code.textContent = hex;
-  chip.append(swatch, code);
-  return chip;
+  chrome.action.setBadgeBackgroundColor({ color: "#7F2B00", tabId: state.tabId }).catch(() => { });
+  chrome.action.setBadgeText({ text: String(failingContrast + conflictCount), tabId: state.tabId }).catch(() => { });
 }
 
 // ------------------------------------------------------------------
-// Simulación (controles integrados)
+// Muestras y bandas
 // ------------------------------------------------------------------
 
-/** Simula un color según la configuración vigente (enrutador compartido). */
+/** Muestra cuadrada de 16 px (decorativa; el hex va siempre al lado). */
+function swatch(hex) {
+  const node = el("span", "m");
+  node.style.backgroundColor = hex;
+  node.setAttribute("aria-hidden", "true");
+  return node;
+}
+
+/** Par original|simulada en una sola muestra con borde. */
+function pairSwatch(originalHex, simulatedHex) {
+  const node = el("span", "par");
+  node.setAttribute("aria-hidden", "true");
+  const a = el("span");
+  a.style.backgroundColor = originalHex;
+  const b = el("span");
+  b.style.backgroundColor = simulatedHex;
+  node.append(a, b);
+  return node;
+}
+
+/** Banda de colores: un segmento por color, sin texto (decorativa). */
+function fillBand(bandElement, hexes) {
+  bandElement.replaceChildren();
+  bandElement.setAttribute("aria-hidden", "true");
+  for (const hex of hexes) {
+    const segment = el("span");
+    segment.style.backgroundColor = hex;
+    bandElement.append(segment);
+  }
+}
+
+/** Series consideradas (marcadas) o, si no hay ninguna marcada, todas. */
+function consideredSeries() {
+  const selected = state.series.filter((color) => isSeriesSelected(color.hex));
+  return selected.length ? selected : state.series;
+}
+
+// ------------------------------------------------------------------
+// Simulación por pestaña
+// ------------------------------------------------------------------
+
 function simulateColor(rgb) {
   return simulateForConfig(rgb, state.simulation);
 }
 
-/** Sincroniza los controles y la cabecera de la columna simulada. */
 function updateSimulationControls() {
   const { type, severity } = state.simulation;
   deficiencySelect.value = type;
   severitySlider.value = String(severity);
   severityValue.textContent = formatNumber(severity, 1);
-
-  // La severidad solo tiene sentido en los tipos de Machado.
   const sliderDisabled = type === "tritanopia" || type === "none";
   severitySlider.disabled = sliderDisabled;
   severitySlider.setAttribute("aria-disabled", String(sliderDisabled));
-  severityNote.hidden = type !== "tritanopia";
-
-  if (type === "none") {
-    simulatedHeader.textContent = "Simulada (sin simulación activa)";
-  } else if (type === "tritanopia") {
-    simulatedHeader.textContent = "Simulada · tritanopía";
-  } else {
-    simulatedHeader.textContent = "Simulada · " + SIMULATION_LABELS[type] + " " + formatNumber(severity, 1);
-  }
+  simulationHelp.textContent = type === "tritanopia" ? SIMULATION_HELP.tritanopia : SIMULATION_HELP.default;
+  const label = type === "none" ? "Sin simulación" : capitalize(SIMULATION_LABELS[type]);
+  simulatedHeader.textContent = label;
+  bandSimulatedLabel.textContent = label;
 }
 
-/** Guarda la configuración de simulación (sobrevive al cierre del panel). */
-function persistSimulation() {
+function persistTabSimulation() {
+  if (!state.tabId) return;
   try {
-    chrome.storage.local.set({
-      simulationType: state.simulation.type,
-      simulationSeverity: state.simulation.severity
-    });
+    chrome.storage.session.set({ ["sim:" + state.tabId]: { ...state.simulation } });
+    if (state.simulation.type !== "none") {
+      chrome.storage.local.set({ lastSimulation: { ...state.simulation } });
+    }
   } catch (error) {
     // Sin almacenamiento disponible se sigue funcionando en memoria.
   }
 }
 
-/** Recupera la configuración guardada al abrir el panel. */
-async function loadStoredSimulation() {
+async function loadTabSimulation() {
+  if (!state.tabId) return;
   try {
-    const stored = await chrome.storage.local.get(["simulationType", "simulationSeverity"]);
-    if (typeof stored.simulationType === "string" && stored.simulationType in SIMULATION_LABELS) {
-      state.simulation.type = stored.simulationType;
-    }
-    if (typeof stored.simulationSeverity === "number" && Number.isFinite(stored.simulationSeverity)) {
-      state.simulation.severity = Math.min(1, Math.max(0, stored.simulationSeverity));
-    }
-  } catch (error) {
-    // Se mantienen los valores por defecto.
-  }
-}
-
-/** Recupera la familia de paleta seleccionada (paso 1 del algoritmo). */
-async function loadStoredFamily() {
-  try {
-    const stored = await chrome.storage.local.get(["paletteFamily"]);
-    if (stored.paletteFamily === "sequential" || stored.paletteFamily === "qualitative") {
-      state.family = stored.paletteFamily;
-    }
-  } catch (error) {
-    // Valor por defecto: cualitativa.
-  }
-}
-
-/** Aplica (o retira) la simulación sobre la página, sin recargarla. */
-async function applySimulationToPage() {
-  const { type, severity } = state.simulation;
-  const message =
-    type === "none"
-      ? { type: "CLEAR_SIMULATION" }
-      : { type: "APPLY_SIMULATION", config: { type, severity } };
-  try {
-    const response = await chrome.runtime.sendMessage(message);
-    if (response && response.ok) {
-      if (type === "none") {
-        setStatus("ok", "Simulación desactivada: la página recuperó sus colores originales.");
-      } else {
-        setStatus("ok", "Simulación de " + SIMULATION_LABELS[type] + " aplicada a la página.");
+    const stored = await chrome.storage.session.get("sim:" + state.tabId);
+    const sim = stored["sim:" + state.tabId];
+    if (sim && typeof sim.type === "string" && sim.type in SIMULATION_LABELS) {
+      state.simulation.type = sim.type;
+      if (typeof sim.severity === "number" && Number.isFinite(sim.severity)) {
+        state.simulation.severity = Math.min(1, Math.max(0, sim.severity));
       }
-    } else {
-      setStatus("warning", "La simulación no se pudo aplicar sobre esta página; la columna simulada del panel sí se actualiza.");
     }
   } catch (error) {
-    setStatus("warning", "La simulación no se pudo aplicar sobre esta página; la columna simulada del panel sí se actualiza.");
+    // Valores por defecto (sin simulación).
   }
 }
 
-/** Reacción común a cualquier cambio de control: inmediata, sin confirmación. */
-function onSimulationChanged() {
-  persistSimulation();
-  updateSimulationControls();
-  renderPalette();
-  renderDistinguishability();
-  applySimulationToPage();
-}
-
-// ------------------------------------------------------------------
-// Paleta original / simulada
-// ------------------------------------------------------------------
-
-/** Fila de la paleta: color original y su versión simulada en paralelo. */
-function buildColorRow(color) {
-  const row = document.createElement("li");
-  row.className = "color-fila";
-
-  const roles = color.roles.map((role) => ROLE_LABELS[role] || role).join(" · ");
-  const share = (color.share * 100).toFixed(1).replace(".", ",") + " %";
-  const examples = color.examples && color.examples.length ? " · " + color.examples.join(", ") : "";
-
-  const original = colorChip(color.hex);
-  const originalMeta = document.createElement("span");
-  originalMeta.className = "color-meta";
-  originalMeta.textContent = roles + " · " + share + examples;
-  const originalCell = document.createElement("span");
-  originalCell.className = "color-celda color-celda--vertical";
-  originalCell.append(original, originalMeta);
-
-  const simulatedCell = colorChip(rgbToHex(simulateColor(color.rgb)));
-
-  row.append(originalCell, simulatedCell);
-  return row;
-}
-
-/** Repinta la paleta con la simulación vigente. */
-function renderPalette() {
-  paletteList.replaceChildren();
-  const palette = state.evaluation && state.evaluation.ok ? state.evaluation.palette || [] : [];
-  for (const color of palette) {
-    paletteList.append(buildColorRow(color));
+async function loadSuggestedSimulation() {
+  try {
+    const stored = await chrome.storage.local.get(["lastSimulation"]);
+    const last = stored.lastSimulation;
+    if (last && typeof last.type === "string" && last.type in SIMULATION_LABELS && last.type !== "none") {
+      return {
+        type: last.type,
+        severity: typeof last.severity === "number" ? Math.min(1, Math.max(0, last.severity)) : 1
+      };
+    }
+  } catch (error) {
+    // Sin sugerencia.
   }
-}
-
-// ------------------------------------------------------------------
-// Contraste WCAG
-// ------------------------------------------------------------------
-
-/** Etiqueta textual de veredicto con icono de forma distinta. */
-function verdictLabel(passes) {
-  const label = document.createElement("span");
-  label.className = "estado-par " + (passes ? "estado-par--cumple" : "estado-par--incumple");
-  const icon = document.createElement("span");
-  icon.className = "estado-icono";
-  icon.setAttribute("aria-hidden", "true");
-  icon.textContent = passes ? "✔" : "✖";
-  const text = document.createElement("span");
-  text.textContent = passes ? "Cumple" : "Incumple";
-  label.append(icon, text);
-  return label;
-}
-
-/** Fila de un par de contraste: muestras, cifra obtenida y umbral exigido. */
-function buildContrastRow(group) {
-  const row = document.createElement("li");
-  row.className = "par-fila";
-
-  const colors = document.createElement("div");
-  colors.className = "par-colores";
-  colors.append(colorChip(group.foreground.hex));
-  const over = document.createElement("span");
-  over.className = "par-sobre";
-  over.textContent = "sobre";
-  colors.append(over, colorChip(group.background.hex));
-
-  const figures = document.createElement("div");
-  figures.className = "par-cifras";
-  const ratioText = document.createElement("span");
-  ratioText.textContent =
-    formatNumber(group.ratio) + ":1 · exigido " + formatNumber(group.threshold, 1) + ":1";
-  figures.append(ratioText);
-
-  const meta = document.createElement("span");
-  meta.className = "color-meta";
-  const parts = [group.count + (group.count === 1 ? " elemento" : " elementos")];
-  if (group.largeText) parts.push("texto grande");
-  if (group.examples && group.examples.length) parts.push(group.examples.join(", "));
-  meta.textContent = parts.join(" · ");
-  figures.append(meta);
-
-  row.append(colors, figures, verdictLabel(group.passes));
-  return row;
-}
-
-/** Pinta un grupo de pares de contraste o su estado vacío. */
-function renderPairList(listElement, groups, emptyText) {
-  listElement.replaceChildren();
-  if (!groups || groups.length === 0) {
-    const item = document.createElement("li");
-    item.className = "color-meta";
-    item.textContent = emptyText;
-    listElement.append(item);
-    return;
-  }
-  for (const group of groups) {
-    listElement.append(buildContrastRow(group));
-  }
-}
-
-// ------------------------------------------------------------------
-// Distinguibilidad
-// ------------------------------------------------------------------
-
-/** Identificador del desplegable de detalle de un par conflictivo. */
-function conflictDetailId(i, j) {
-  return "detalle-par-" + i + "-" + j;
-}
-
-/** Cuerpo del detalle de un par: colores, cifras y lectura. */
-function buildConflictDetailBody(conflict) {
-  const body = document.createElement("div");
-  body.className = "detalle-cuerpo";
-  const deltaSimulated = state.distSimulated.matrix[conflict.i][conflict.j];
-  const deltaOriginal = state.distOriginal.matrix[conflict.i][conflict.j];
-
-  for (const index of [conflict.i, conflict.j]) {
-    const line = document.createElement("p");
-    line.className = "detalle-linea";
-    line.append(
-      "Original ",
-      colorChip(state.series[index].hex),
-      " → simulado ",
-      colorChip(rgbToHex(state.simulatedRgbs[index]))
-    );
-    body.append(line);
-  }
-
-  const figures = document.createElement("p");
-  figures.textContent =
-    "ΔE00 simulado: " + formatNumber(deltaSimulated) + " (umbral " + formatNumber(state.threshold, 1) +
-    ") · ΔE00 en visión típica: " + formatNumber(deltaOriginal);
-  body.append(figures);
-
-  const reading = document.createElement("p");
-  reading.className = "color-meta";
-  reading.textContent = deltaOriginal >= state.threshold
-    ? "Este par solo resulta confundible bajo la simulación: en visión típica su diferencia supera el umbral."
-    : "Este par es confundible incluso sin simulación.";
-  body.append(reading);
-  return body;
+  return null;
 }
 
 /**
- * Abre el desplegable del par en su propia fila y lleva el foco hasta él
- * (lo usan las celdas conflictivas de la matriz).
+ * Sincroniza el filtro de la PÁGINA con el desplegable: página simulada
+ * ⟺ desplegable con deficiencia. La confirmación solo se anuncia a los
+ * lectores de pantalla (el desplegable ya dice qué simulación hay).
  */
-function openConflictDetail(i, j) {
-  const details = document.getElementById(conflictDetailId(i, j));
-  if (!details) return;
-  details.open = true;
-  details.scrollIntoView({ behavior: "smooth", block: "center" });
-  const summary = details.querySelector("summary");
-  if (summary) summary.focus();
+async function syncPageFilter({ announce: sayIt = true } = {}) {
+  const { type, severity } = state.simulation;
+  const shouldApply = type !== "none";
+  if (!shouldApply && !state.filterOnPage) return;
+  const message = shouldApply
+    ? { type: "APPLY_SIMULATION", config: { type, severity }, tabId: state.tabId }
+    : { type: "CLEAR_SIMULATION", tabId: state.tabId };
+  try {
+    const response = await chrome.runtime.sendMessage(message);
+    if (!(response && response.ok)) {
+      if (shouldApply) {
+        state.filterOnPage = false;
+        setStatus("warning", "La simulación no se pudo aplicar sobre esta página (no es accesible); la paleta simulada del panel sí se actualiza.");
+      }
+      return;
+    }
+    state.filterOnPage = shouldApply;
+    if (!sayIt) return;
+    announce(shouldApply
+      ? "Simulación de " + SIMULATION_LABELS[type] + " aplicada sobre la página."
+      : "Simulación retirada: la página recuperó sus colores originales.");
+  } catch (error) {
+    if (shouldApply) {
+      state.filterOnPage = false;
+      setStatus("warning", "No se pudo comunicar con la página para aplicar la simulación.");
+    }
+  }
 }
 
-/** Matriz de distinguibilidad como cuadrícula accesible. */
+function onSimulationChanged() {
+  persistTabSimulation();
+  updateSimulationControls();
+  renderPalette();
+  renderDistinguishability();
+  syncPageFilter({ announce: true });
+}
+
+// ------------------------------------------------------------------
+// Resumen: bandas y marcador
+// ------------------------------------------------------------------
+
+/** Valor del marcador: cifra grande + «de N» pequeño; palabra debajo. */
+function setStat(valueElement, textElement, { figure, total = null, text, tone = "" }) {
+  valueElement.replaceChildren(figure);
+  if (total !== null) {
+    // Espacio real antes de «de N»: los lectores de pantalla no ven el margen.
+    valueElement.append(" ", el("small", "", "de " + total));
+  }
+  valueElement.className = "v" + (tone ? " " + tone : "");
+  textElement.textContent = text;
+}
+
+function updateSummary() {
+  const evaluation = state.evaluation;
+  if (!evaluation || !evaluation.ok) {
+    summaryBlock.hidden = true;
+    return;
+  }
+  summaryBlock.hidden = false;
+
+  // Bandas: series consideradas en visión típica y simuladas.
+  const considered = consideredSeries();
+  fillBand(bandOriginal, considered.map((color) => color.hex));
+  fillBand(bandSimulated, considered.map((color) => rgbToHex(simulateColor(color.rgb))));
+  summarySeries.textContent = state.series.length + (state.series.length === 1 ? " serie" : " series");
+
+  const contrast = evaluation.contrast || { text: [], graphics: [] };
+  const textGroups = contrast.text || [];
+  const graphicGroups = contrast.graphics || [];
+  const totalPairs = textGroups.length + graphicGroups.length;
+  const failing = textGroups.filter((g) => !g.passes).length + graphicGroups.filter((g) => !g.passes).length;
+  setStat(statContrastValue, statContrastText, {
+    figure: String(failing),
+    total: totalPairs,
+    text: failing === 1 ? "par incumple" : "pares incumplen",
+    tone: failing > 0 ? "mal" : ""
+  });
+
+  const n = state.series.length;
+  const totalCombinations = n * (n - 1) / 2;
+  const conflicts = state.distSimulated ? state.distSimulated.conflicts.length : 0;
+  setStat(statConflictsValue, statConflictsText, {
+    figure: String(conflicts),
+    total: totalCombinations,
+    text: n < 2 ? "sin series que comparar" : conflicts === 1 ? "par confundible" : "pares confundibles",
+    tone: conflicts > 0 ? "mal" : ""
+  });
+
+  const levels = (evaluation.levels || []).map((level) => LEVEL_SHORT[level] || level);
+  setStat(statLevelValue, statLevelText, {
+    figure: String(levels.length),
+    text: (levels.length === 1 ? "nivel, " : "niveles, ") + (levels.join(" + ") || "ninguno")
+  });
+
+  const colors = (evaluation.palette || []).length;
+  const approximate = evaluation.approximate === true;
+  setStat(statApproxValue, statApproxText, {
+    figure: String(colors),
+    text: (colors === 1 ? "color, " : "colores, ") + (approximate ? "aproximada" : "exacta"),
+    tone: approximate ? "avi" : ""
+  });
+}
+
+// ------------------------------------------------------------------
+// Paleta detectada
+// ------------------------------------------------------------------
+
+function buildPaletteRow(color) {
+  const row = el("div", "r");
+  const simulatedHex = rgbToHex(simulateColor(color.rgb));
+  row.append(pairSwatch(color.hex, simulatedHex));
+
+  const original = el("span");
+  original.append(el("span", "mono hex", color.hex));
+  const roles = color.roles.map((role) => ROLE_LABELS[role] || role).join(" · ");
+  const share = (color.share * 100).toFixed(1).replace(".", ",") + " %";
+  const examples = color.examples && color.examples.length ? " · " + color.examples.join(", ") : "";
+  original.append(el("span", "rol", roles + " · " + share + examples));
+  row.append(original);
+
+  const simulated = el("span");
+  simulated.append(el("span", "mono hex", simulatedHex));
+  row.append(simulated);
+  return row;
+}
+
+function renderPalette() {
+  paletteList.replaceChildren();
+  const palette = state.evaluation && state.evaluation.ok ? state.evaluation.palette || [] : [];
+  for (const color of palette) paletteList.append(buildPaletteRow(color));
+}
+
+// ------------------------------------------------------------------
+// Contraste
+// ------------------------------------------------------------------
+
+function buildContrastRow(group, kind) {
+  const row = el("div", "rc");
+
+  // Muestra: «Aa» pintado con el texto sobre su fondo, o barra del objeto.
+  let sample;
+  if (kind === "text") {
+    sample = el("div", "muestra-txt", "Aa");
+    sample.style.color = group.foreground.hex;
+    sample.style.backgroundColor = group.background.hex;
+  } else {
+    sample = el("div", "muestra-obj");
+    sample.style.backgroundColor = group.background.hex;
+    const bar = el("span", group.ratio < 1.3 ? "tenue" : "");
+    bar.style.backgroundColor = group.foreground.hex;
+    sample.append(bar);
+  }
+  sample.setAttribute("aria-hidden", "true");
+  row.append(sample);
+
+  const figures = el("div");
+  const num = el("span", "mono num", formatNumber(group.ratio));
+  num.append(el("small", "", ":1"));
+  figures.append(num);
+  const detail = el("span", "qd");
+  detail.append(el("code", "", group.foreground.hex), " sobre ", el("code", "", group.background.hex));
+  const parts = [" · " + group.count + (group.count === 1 ? " elemento" : " elementos")];
+  if (group.largeText) parts.push("texto grande, umbral " + formatNumber(group.threshold, 1) + ":1");
+  if (group.examples && group.examples.length) parts.push(group.examples.slice(0, 3).join(", "));
+  detail.append(parts.join(" · "));
+  figures.append(detail);
+  row.append(figures);
+
+  row.append(group.passes ? verdictPill("cumple", "Cumple") : verdictPill("incumple", "Incumple"));
+  return row;
+}
+
+function renderPairList(listElement, groups, kind, emptyText) {
+  listElement.replaceChildren();
+  if (!groups || groups.length === 0) {
+    listElement.append(el("p", "sin-datos", emptyText));
+    return;
+  }
+  for (const group of groups) listElement.append(buildContrastRow(group, kind));
+}
+
+// ------------------------------------------------------------------
+// Distinguibilidad: matriz (triángulo inferior) y pares con escala
+// ------------------------------------------------------------------
+
 function renderMatrix() {
   matrixContainer.replaceChildren();
   const size = state.series.length;
   if (size < 2) return;
 
-  const table = document.createElement("table");
-  table.className = "matriz";
-  const caption = document.createElement("caption");
-  caption.className = "color-meta";
-  caption.textContent =
-    "ΔE00 entre series simuladas; las celdas marcadas con ✖ están por debajo del umbral " +
-    formatNumber(state.threshold, 1) + ".";
+  const table = el("table", "matriz");
+  const caption = el("caption", "solo-lector",
+    "Diferencias ΔE00 entre series simuladas; solo se muestra el triángulo inferior.");
   table.append(caption);
 
-  const head = document.createElement("thead");
-  const headRow = document.createElement("tr");
-  headRow.append(document.createElement("th"));
-  for (let j = 0; j < size; j += 1) {
-    const th = document.createElement("th");
+  // Encabezado: una muestra por columna (series 1 a n-1).
+  const head = el("thead");
+  const headRow = el("tr");
+  headRow.append(el("th"));
+  for (let j = 0; j < size - 1; j += 1) {
+    const th = el("th");
     th.scope = "col";
-    th.textContent = String(j + 1);
+    th.append(swatch(state.series[j].hex), el("span", "solo-lector", "serie " + (j + 1) + " " + state.series[j].hex));
     headRow.append(th);
   }
   head.append(headRow);
   table.append(head);
 
-  const body = document.createElement("tbody");
-  for (let i = 0; i < size; i += 1) {
-    const row = document.createElement("tr");
-    const rowHeader = document.createElement("th");
+  const body = el("tbody");
+  for (let i = 1; i < size; i += 1) {
+    const row = el("tr");
+    const rowHeader = el("th", "fila");
     rowHeader.scope = "row";
-    rowHeader.append(String(i + 1) + " ", colorChip(state.series[i].hex));
+    rowHeader.append(swatch(state.series[i].hex), " " + (i + 1), el("span", "solo-lector", " " + state.series[i].hex));
     row.append(rowHeader);
-
-    for (let j = 0; j < size; j += 1) {
-      const cell = document.createElement("td");
-      if (i === j) {
-        cell.textContent = "";
-        cell.className = "celda-diagonal";
-      } else {
+    for (let j = 0; j < size - 1; j += 1) {
+      const cell = el("td");
+      if (j < i) {
         const delta = state.distSimulated.matrix[i][j];
-        if (delta < state.threshold) {
-          // Celda conflictiva: botón con acceso al detalle del par.
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "celda-conflicto";
-          button.textContent = formatNumber(delta, 1) + " ✖";
-          button.setAttribute(
-            "aria-label",
-            "Par conflictivo " + state.series[i].hex + " y " + state.series[j].hex +
-            ", diferencia simulada " + formatNumber(delta) + ", ver detalle"
-          );
-          button.addEventListener("click", () => openConflictDetail(Math.min(i, j), Math.max(i, j)));
-          cell.append(button);
-        } else {
-          cell.textContent = formatNumber(delta, 1);
-        }
+        const conflict = delta < state.threshold;
+        cell.className = conflict ? "x" : "v";
+        cell.textContent = formatNumber(delta, 1);
+        if (conflict) cell.append(el("span", "solo-lector", " confundible"));
+      } else {
+        cell.className = "vacia";
       }
       row.append(cell);
     }
@@ -509,98 +676,109 @@ function renderMatrix() {
   matrixContainer.append(table);
 }
 
-/** Leyenda numerada: original → simulada, con hex visible en ambas. */
-function renderLegend() {
-  seriesLegend.replaceChildren();
-  state.series.forEach((color, index) => {
-    const item = document.createElement("li");
-    item.append(colorChip(color.hex), " → ", colorChip(rgbToHex(state.simulatedRgbs[index])));
-    seriesLegend.append(item);
-  });
+/** Escala de 0 a 50 con umbral, punto lleno (simulado) y círculo (típico). */
+function buildScale(deltaSimulated, deltaOriginal) {
+  const position = (value) => (Math.min(value, SCALE_MAX) / SCALE_MAX) * 100;
+  const scale = el("div", "escala");
+  scale.setAttribute("aria-hidden", "true");
+  scale.append(el("div", "pista"));
+  const zone = el("div", "zona");
+  zone.style.width = position(state.threshold) + "%";
+  const threshold = el("div", "umbral");
+  threshold.style.left = position(state.threshold) + "%";
+  const typical = el("div", "tip");
+  typical.style.left = position(deltaOriginal) + "%";
+  const simulated = el("div", "sim");
+  simulated.style.left = position(deltaSimulated) + "%";
+  scale.append(zone, threshold, typical, simulated);
+  return scale;
 }
 
-/** Lista de pares conflictivos con acceso al detalle. */
 function renderConflicts() {
   conflictList.replaceChildren();
   const conflicts = state.distSimulated ? state.distSimulated.conflicts : [];
   if (!conflicts.length) {
-    const item = document.createElement("li");
-    item.className = "color-meta";
-    item.textContent = "Ningún par por debajo del umbral con la simulación seleccionada.";
-    conflictList.append(item);
+    conflictList.append(el("p", "sin-datos", "Ningún par por debajo del umbral con la simulación seleccionada."));
     return;
   }
   for (const conflict of conflicts) {
-    const item = document.createElement("li");
-    item.className = "par-fila";
-
-    // El detalle vive en la propia fila como desplegable nativo: sin viajes
-    // al fondo de la página y operable con teclado (summary es enfocable).
-    const details = document.createElement("details");
-    details.className = "detalle-plegable";
-    details.id = conflictDetailId(conflict.i, conflict.j);
-
-    const summary = document.createElement("summary");
-
-    const colors = document.createElement("div");
-    colors.className = "par-colores";
-    colors.append(colorChip(state.series[conflict.i].hex));
-    const versus = document.createElement("span");
-    versus.className = "par-sobre";
-    versus.textContent = "frente a";
-    colors.append(versus, colorChip(state.series[conflict.j].hex));
-
-    const figures = document.createElement("div");
-    figures.className = "par-cifras";
+    const a = state.series[conflict.i];
+    const b = state.series[conflict.j];
     const deltaOriginal = state.distOriginal.matrix[conflict.i][conflict.j];
-    const line = document.createElement("span");
-    line.textContent =
-      "ΔE00 simulado " + formatNumber(conflict.delta) + " · en visión típica " + formatNumber(deltaOriginal);
-    const origin = document.createElement("span");
-    origin.className = "color-meta";
-    origin.textContent = deltaOriginal >= state.threshold
-      ? "confundible solo bajo simulación"
-      : "confundible también sin simulación";
-    figures.append(line, origin);
+    const item = el("div", "parc");
 
-    summary.append(colors, figures, verdictLabel(false));
-    details.append(summary, buildConflictDetailBody(conflict));
-    item.append(details);
+    const top = el("div", "top");
+    top.append(swatch(a.hex), el("span", "mono hx", a.hex), swatch(b.hex), el("span", "mono hx", b.hex),
+      verdictPill("incumple", "Confundible"));
+    item.append(top);
+
+    item.append(buildScale(conflict.delta, deltaOriginal));
+
+    const figures = el("div", "cifras");
+    const left = el("span");
+    left.append("Simulado ", el("b", "mono", formatNumber(conflict.delta)), " · típico ", el("b", "mono", formatNumber(deltaOriginal)));
+    const note = el("span", "", deltaOriginal >= state.threshold ? "solo bajo simulación" : "también en visión típica");
+    figures.append(left, note);
+    item.append(figures);
     conflictList.append(item);
   }
+  conflictList.append(el("p", "leyenda-m",
+    "Escala de 0 a " + SCALE_MAX + ". Punto lleno: simulado. Círculo: visión típica. Zona rojiza: por debajo del umbral " +
+    formatNumber(state.threshold, 1) + "."));
+}
+
+function renderDistinguishability() {
+  const palette = state.evaluation && state.evaluation.ok ? state.evaluation.palette || [] : [];
+  state.series = palette.filter((color) => color.roles.includes("series")).slice(0, MAX_SERIES_COLORS);
+
+  if (state.series.length < 2) {
+    distConfigElement.textContent = "Se necesitan al menos dos colores de serie para evaluar distinguibilidad.";
+    distCount.textContent = "sin series";
+    matrixContainer.replaceChildren();
+    matrixLegend.textContent = "";
+    conflictList.replaceChildren(el("p", "sin-datos", "Sin pares que evaluar."));
+    state.distSimulated = null;
+    state.distOriginal = null;
+    updateBadge();
+    updateSummary();
+    renderRecommendation();
+    return;
+  }
+
+  state.simulatedRgbs = state.series.map((color) => simulateColor(color.rgb));
+  state.distSimulated = computeDistinguishability(state.simulatedRgbs, { threshold: state.threshold });
+  state.distOriginal = computeDistinguishability(state.series.map((color) => color.rgb), { threshold: state.threshold });
+
+  const { type, severity } = state.simulation;
+  const method = type === "tritanopia" ? "método exacto de Brettel (1997)" : "matrices de Machado (2009)";
+  distConfigElement.textContent = type === "none"
+    ? "Sin simulación: los ΔE00 corresponden a los colores originales."
+    : "Simulación: " + SIMULATION_LABELS[type] + (type === "tritanopia" ? "" : ", severidad " + formatNumber(severity, 1)) + " · " + method + ".";
+
+  const conflictCount = state.distSimulated.conflicts.length;
+  distCount.textContent = conflictCount === 0
+    ? "sin pares bajo " + formatNumber(state.threshold, 1)
+    : conflictCount + (conflictCount === 1 ? " par bajo " : " pares bajo ") + formatNumber(state.threshold, 1);
+
+  renderMatrix();
+  matrixLegend.replaceChildren("ΔE00 entre series simuladas. En ", el("b", "", "negrita sobre fondo rojizo"),
+    ", los pares por debajo del umbral " + formatNumber(state.threshold, 1) + ".");
+  renderConflicts();
+  updateBadge();
+  updateSummary();
+  renderRecommendation();
 }
 
 // ------------------------------------------------------------------
-// Recomendación de paleta (sprint 4)
+// Series consideradas (ajuste S4 + sprint 5)
 // ------------------------------------------------------------------
 
-/** Restablece el conmutador de previsualización (sin tocar la página). */
-function resetPreviewUi() {
-  state.previewActive = false;
-  previewToggle.checked = false;
-}
-
-/**
- * Fondo de PÁGINA: la entrada con rol fondo cuyos elementos de origen son
- * body o html (la observación sintética blanca también apunta a body).
- * NUNCA se elige por peso: en un panel con muchas barras y chips de
- * leyenda, una serie puede acumular más peso de fondo que el blanco de la
- * página sin ser por ello el fondo del tablero (ajuste fino del Sprint 4).
- */
 function pageBackgroundEntry() {
   const palette = state.evaluation && state.evaluation.ok ? state.evaluation.palette || [] : [];
-  // Los descriptores de origen son tag(+#id|.clase): "body", "body.tema"…
   const isPageElement = (example) => /^(body|html)($|[.#])/.test(example);
-  return (
-    palette.find(
-      (color) =>
-        color.roles.includes("background") && (color.examples || []).some(isPageElement)
-    ) || null
-  );
+  return palette.find((color) => color.roles.includes("background") && (color.examples || []).some(isPageElement)) || null;
 }
 
-/** Fondo dominante para la revalidación de contraste: el fondo de página;
-    como respaldo, el rol fondo de mayor peso; blanco en último término. */
 function dominantBackgroundRgb() {
   const pageBackground = pageBackgroundEntry();
   if (pageBackground) return pageBackground.rgb;
@@ -609,138 +787,176 @@ function dominantBackgroundRgb() {
   return backgrounds.length ? backgrounds[0].rgb : { r: 255, g: 255, b: 255 };
 }
 
-// Descriptores de elementos estructurales de ejes y cuadrícula: piezas de
-// D3/SVG que portan color pero no son categorías de datos. Coinciden con
-// los "examples" que produce la consolidación: contenedores puros (svg, g),
-// la línea de dominio del eje (path.domain), las líneas de tick (line) y
-// cualquier clase de eje/cuadrícula (.tick, .domain, .eje, .grid, .axis).
+// Descriptores de elementos estructurales de ejes y cuadrícula (D3/SVG).
 const STRUCTURAL_EXAMPLE_PATTERN = /^(svg|g|line|path\.domain)$|\.(domain|tick|eje|grid|axis)($|\b)/i;
 
-/**
- * Criterio de selección POR DEFECTO de una serie (ajuste del Sprint 4):
- * la casilla nace DESMARCADA cuando hay evidencia de que el color es
- * estructural y no una categoría de datos:
- *   a) su rol combina serie con TEXTO, o combina serie con FONDO siendo
- *      además el fondo DOMINANTE del tablero (el blanco de página que a
- *      la vez traza los sectores del pastel). El matiz "dominante" es
- *      deliberado: los chips de leyenda aportan rol de fondo al mismo
- *      hex de su serie, y desmarcar por cualquier fondo eliminaría a
- *      todas las series con leyenda; un fondo puntual es evidencia de
- *      categoría de datos, no de estructura.
- *   b) TODOS sus elementos de origen conocidos son piezas estructurales
- *      de ejes o cuadrícula (patrón de arriba: svg/g puros, path.domain,
- *      line de ticks, clases .tick/.eje/.grid/.axis).
- * En el resto nace MARCADA. Los colores sin elementos de origen (los
- * muestreados de canvas, con examples vacío) nacen marcados porque no
- * hay evidencia estructural: el negro de Okabe-Ito en un gráfico canvas
- * es una serie de datos legítima.
- */
-function defaultSeriesSelected(entry, dominantBackgroundHex) {
-  if (entry.roles.includes("text")) return false;
-  if (entry.roles.includes("background") && entry.hex === dominantBackgroundHex) return false;
-  const examples = entry.examples || [];
-  if (examples.length && examples.every((example) => STRUCTURAL_EXAMPLE_PATTERN.test(example))) {
-    return false;
-  }
-  return true;
+// Parámetros calibrados en vivo sobre los seis paneles del banco (sprint 5,
+// bloque 1): piso de proporción 0,8 % (variantes de cola ≤ 0,79 %, series
+// reales desde 0,80 %); absorción ΔE00 9,0 entre ORIGINALES (eslabón máximo
+// medido 8,3; series reales bien espaciadas ≥ 14); croma mínimo C*ab 6
+// (acromáticos de suavizado 0,4–2,5; serie real menos saturada ≈ 20).
+// Solo se absorben colores SIN elemento; el absorbido queda desmarcado con
+// su nota y puede volver a marcarse.
+const SERIES_MIN_SHARE = 0.008;
+const SERIES_ABSORB_DELTA = 9.0;
+const SERIES_MIN_CHROMA = 6;
+
+function entryChroma(entry) {
+  return Math.sqrt(entry.lab.a * entry.lab.a + entry.lab.b * entry.lab.b);
 }
 
-/** ¿La serie está incluida en la recomendación? */
+function isStructuralEntry(entry) {
+  const examples = entry.examples || [];
+  return examples.length > 0 && examples.every((example) => STRUCTURAL_EXAMPLE_PATTERN.test(example));
+}
+
+/** Selección por defecto: hex → { selected, note }, absorción por rondas. */
+function computeDefaultSelection(palette, seriesEntries) {
+  const pageBackground = pageBackgroundEntry();
+  const pageBgHex = pageBackground ? pageBackground.hex : null;
+  const pool = [];
+  for (const color of palette) {
+    if (!(color.examples || []).length) continue;
+    if (color.roles.includes("text")) continue;
+    if (color.hex === pageBgHex) continue;
+    if (isStructuralEntry(color)) continue;
+    pool.push({ lab: color.lab, root: color.hex });
+  }
+  const items = seriesEntries.map((entry) => {
+    const hasElements = (entry.examples || []).length > 0;
+    let note = null;
+    if (entry.roles.includes("text")) note = "texto";
+    else if (entry.roles.includes("background") && entry.hex === pageBgHex) note = "fondo de página";
+    else if (hasElements && isStructuralEntry(entry)) note = "estructural (ejes o cuadrícula)";
+    else if (!hasElements && entry.share < SERIES_MIN_SHARE) {
+      note = "proporción " + formatNumber(entry.share * 100) + " %, bajo el piso de " + formatNumber(SERIES_MIN_SHARE * 100, 1) + " %";
+    } else if (!hasElements && entryChroma(entry) < SERIES_MIN_CHROMA) note = "acromático: suavizado de texto o ejes";
+    return { entry, hasElements, note, accepted: false };
+  });
+  const pendingItems = () => items.filter((item) => !item.note && !item.hasElements && !item.accepted);
+  while (pendingItems().length) {
+    let absorbedSomething = true;
+    while (absorbedSomething) {
+      absorbedSomething = false;
+      for (const item of pendingItems()) {
+        let best = null;
+        for (const anchor of pool) {
+          const delta = ciede2000(item.entry.lab, anchor.lab);
+          if (!best || delta < best.delta) best = { delta, root: anchor.root };
+        }
+        if (best && best.delta < SERIES_ABSORB_DELTA) {
+          item.note = "variante de " + best.root + " (ΔE00 " + formatNumber(best.delta, 1) + ")";
+          pool.push({ lab: item.entry.lab, root: best.root });
+          absorbedSomething = true;
+        }
+      }
+    }
+    const rest = pendingItems();
+    if (!rest.length) break;
+    const top = rest.reduce((a, b) => (b.entry.share > a.entry.share ? b : a), rest[0]);
+    top.accepted = true;
+    pool.push({ lab: top.entry.lab, root: top.entry.hex });
+  }
+  const selection = new Map();
+  for (const item of items) selection.set(item.entry.hex, { selected: !item.note, note: item.note });
+  return selection;
+}
+
 function isSeriesSelected(hex) {
   return state.seriesSelection.get(hex) !== false;
 }
 
-/** Casilla de una serie: operable con teclado, con aria-label y hex escrito. */
-function buildSeriesCheckbox(entry) {
-  const item = document.createElement("li");
-  const label = document.createElement("label");
-  label.className = "casilla-serie";
+function persistSelection() {
+  const snapshot = {};
+  for (const [hex, selected] of state.seriesSelection.entries()) snapshot[hex] = selected;
+  state.ui.selection = snapshot;
+  state.ui.selectionEvaluatedAt = state.evaluation ? state.evaluation.evaluatedAt : null;
+  saveUiState();
+}
 
-  const checkbox = document.createElement("input");
+function buildSeriesCheckbox(entry) {
+  const item = el("li");
+  const label = el("label", "casilla-serie");
+  const checkbox = el("input");
   checkbox.type = "checkbox";
   checkbox.checked = isSeriesSelected(entry.hex);
-  checkbox.setAttribute(
-    "aria-label",
-    "Incluir el color " + entry.hex + " como serie de datos en la recomendación"
-  );
+  const defaultNote = state.seriesNotes.get(entry.hex);
+  checkbox.setAttribute("aria-label",
+    "Incluir el color " + entry.hex + " como serie de datos en la recomendación" +
+    (defaultNote ? " (desmarcado por defecto: " + defaultNote + ")" : ""));
   checkbox.addEventListener("change", () => {
     state.seriesSelection.set(entry.hex, checkbox.checked);
-    // La selección alimenta únicamente a la recomendación: la matriz de
-    // distinguibilidad sigue mostrando todas las series.
+    persistSelection();
+    // La selección alimenta la recomendación y las bandas; la matriz sigue con todo.
+    updateSummary();
     renderRecommendation();
   });
-
-  const swatch = document.createElement("span");
-  swatch.className = "muestra-color";
-  swatch.style.backgroundColor = entry.hex;
-  swatch.setAttribute("aria-hidden", "true");
-
-  const code = document.createElement("code");
-  code.className = "hex";
-  code.textContent = entry.hex;
-
-  label.append(checkbox, swatch, code);
+  label.append(checkbox, swatch(entry.hex), el("span", "mono hex", entry.hex));
+  if (defaultNote) label.append(el("span", "nota", defaultNote));
   item.append(label);
   return item;
 }
 
-/**
- * Reconstruye la selección (con sus valores por defecto) y sus casillas
- * SOLO cuando llega una evaluación nueva; los cambios manuales del
- * usuario sobreviven a los cambios de tipo, severidad, umbral o familia.
- */
 function ensureSeriesSelection() {
   if (state.selectionSource === state.evaluation) return;
   state.selectionSource = state.evaluation;
   state.seriesSelection = new Map();
+  state.seriesNotes = new Map();
   seriesSelectionList.replaceChildren();
-
-  // Solo el fondo de página (body/html) desmarca por la regla serie+fondo;
-  // un rol de fondo que venga de elementos puntuales (chips de leyenda,
-  // tarjetas) no desactiva la serie: esos colores nacen marcados.
-  const pageBackground = pageBackgroundEntry();
-  const dominantBackgroundHex = pageBackground ? pageBackground.hex : null;
-
+  const palette = state.evaluation && state.evaluation.ok ? state.evaluation.palette || [] : [];
+  const defaults = computeDefaultSelection(palette, state.series);
+  const stored = state.ui.selection && state.evaluation && state.ui.selectionEvaluatedAt === state.evaluation.evaluatedAt
+    ? state.ui.selection : null;
   for (const entry of state.series) {
-    state.seriesSelection.set(entry.hex, defaultSeriesSelected(entry, dominantBackgroundHex));
+    const decision = defaults.get(entry.hex) || { selected: true, note: null };
+    const selected = stored && typeof stored[entry.hex] === "boolean" ? stored[entry.hex] : decision.selected;
+    state.seriesSelection.set(entry.hex, selected);
+    state.seriesNotes.set(entry.hex, decision.note);
     seriesSelectionList.append(buildSeriesCheckbox(entry));
   }
 }
 
-/** Envía a la página la previsualización (aplicar) o su retirada. */
+// ------------------------------------------------------------------
+// Previsualización
+// ------------------------------------------------------------------
+
+function setPreviewSwitch(checked) {
+  previewToggle.setAttribute("aria-checked", String(checked));
+}
+
+function resetPreviewUi() {
+  state.previewActive = false;
+  setPreviewSwitch(false);
+}
+
 async function sendPreview(active) {
   const recommendation = state.recommendation;
   if (active && (!recommendation || recommendation.outcome !== "proposal")) return;
   const message = active
     ? {
-        type: "PREVIEW_PALETTE",
-        mapping: recommendation.mapping.map((entry) => ({
-          fromHex: entry.originalHex,
-          toHex: entry.proposedHex
-        }))
-      }
-    : { type: "CLEAR_PREVIEW" };
+      type: "PREVIEW_PALETTE", tabId: state.tabId,
+      mapping: recommendation.mapping.map((entry) => ({ fromHex: entry.originalHex, toHex: entry.proposedHex }))
+    }
+    : { type: "CLEAR_PREVIEW", tabId: state.tabId };
   try {
     const response = await chrome.runtime.sendMessage(message);
     if (!active) {
       state.previewActive = false;
+      setPreviewSwitch(false);
       setStatus("ok", "Previsualización retirada: la página recuperó sus colores originales.");
       return;
     }
     if (response && response.ok) {
       state.previewActive = true;
+      setPreviewSwitch(true);
       const extra = response.entriesWithoutElements
-        ? " · " + response.entriesWithoutElements + " colores sin elementos recoloreables (canvas)"
-        : "";
+        ? " · " + response.entriesWithoutElements + " colores sin elementos recoloreables (canvas)" : "";
       setStatus("ok", "Previsualización aplicada: " + response.recolored + " propiedades recoloreadas" + extra + ".");
     } else {
       resetPreviewUi();
-      setStatus(
-        "warning",
-        response && response.error === "no-registry"
-          ? "La página ya no conserva el registro color-elemento (¿se recargó?). Vuelve a pulsar «Extraer paleta y evaluar»."
-          : "No se pudo aplicar la previsualización sobre esta página."
-      );
+      setStatus("warning", response && response.error === "no-registry"
+        ? "La página ya no conserva el registro color-elemento (¿se recargó?). Vuelve a pulsar «Volver a evaluar»."
+        : "No se pudo aplicar la previsualización sobre esta página.");
     }
   } catch (error) {
     resetPreviewUi();
@@ -748,19 +964,71 @@ async function sendPreview(active) {
   }
 }
 
-/** Apaga la previsualización si estaba activa (cambio de desenlace). */
 function stopPreviewIfActive() {
-  if (state.previewActive) {
-    sendPreview(false);
-  }
+  if (state.previewActive) sendPreview(false);
   resetPreviewUi();
 }
 
-/**
- * Calcula y pinta el bloque de recomendación con los datos ya evaluados
- * (sin repetir la evaluación). Tres desenlaces con presentación propia:
- * propuesta, cumplimiento sin reemplazo y aviso de rediseño.
- */
+// ------------------------------------------------------------------
+// Recomendación
+// ------------------------------------------------------------------
+
+function recommendationInput(deficiencyType, selectedSeries, seriesFailures) {
+  return {
+    seriesColors: selectedSeries.map((color) => ({ hex: color.hex, rgb: color.rgb })),
+    backgroundRgb: dominantBackgroundRgb(),
+    deficiencyType,
+    family: state.family,
+    threshold: state.threshold,
+    originalGraphicsFailures: seriesFailures
+  };
+}
+
+function setRecommendationHeading(title, reason) {
+  recommendationTitle.textContent = title;
+  recommendationReason.textContent = reason;
+}
+
+function renderRecommendationOverview(selectedSeries, seriesFailures) {
+  recommendationOverview.replaceChildren();
+  recommendationOverview.hidden = false;
+  state.overview = [];
+  for (const type of ["protanopia", "deuteranopia", "tritanopia"]) {
+    const result = recommendPalette(recommendationInput(type, selectedSeries, seriesFailures));
+    state.overview.push({
+      type,
+      outcome: result.outcome,
+      schemeName: result.scheme ? result.scheme.name : null,
+      minDelta: typeof result.minDelta === "number" ? result.minDelta : null,
+      seriesCount: result.seriesCount || null,
+      maxAvailable: result.maxAvailable || null,
+      exhausted: result.exhausted === true
+    });
+    const row = el("div", "ov");
+    row.append(el("span", "", capitalize(SIMULATION_LABELS[type])));
+    let pill;
+    let detail;
+    if (result.outcome === "compliant") {
+      pill = verdictPill("cumple", "Cumple");
+      detail = "ΔE00 mínimo " + formatNumber(result.minDelta) + " sin reemplazo";
+    } else if (result.outcome === "proposal") {
+      pill = verdictPill("neutra", "Propuesta");
+      detail = "esquema " + result.scheme.name;
+    } else if (result.outcome === "redesign") {
+      pill = verdictPill("aviso", "Rediseño");
+      detail = result.exhausted ? "ningún esquema superó la revalidación"
+        : result.seriesCount + " series frente a " + result.maxAvailable + " disponibles";
+    } else {
+      pill = verdictPill("neutra", "Sin datos");
+      detail = "se necesitan al menos dos series consideradas";
+    }
+    row.append(el("span", "qd", detail), pill);
+    recommendationOverview.append(row);
+  }
+  setRecommendationHeading("Sin simulación en esta pestaña",
+    "Desenlace bajo cada deficiencia a severidad máxima. Elige una en «Tipo de deficiencia» para ver la propuesta completa y previsualizarla.");
+}
+
 function renderRecommendation() {
   const evaluation = state.evaluation;
   if (!evaluation || !evaluation.ok) {
@@ -771,182 +1039,173 @@ function renderRecommendation() {
   recommendationSection.hidden = false;
   familySelect.value = state.family;
   ensureSeriesSelection();
-
-  const contrast = evaluation.contrast || { text: [], graphics: [] };
-  const graphicsFailures = (contrast.graphics || []).filter((group) => !group.passes).length;
-
-  // Entrada del algoritmo: solo las series marcadas como consideradas.
-  const selectedSeries = state.series.filter((color) => isSeriesSelected(color.hex));
-
-  const result = recommendPalette({
-    seriesColors: selectedSeries.map((color) => ({ hex: color.hex, rgb: color.rgb })),
-    backgroundRgb: dominantBackgroundRgb(),
-    deficiencyType: state.simulation.type,
-    family: state.family,
-    threshold: state.threshold,
-    originalGraphicsFailures: graphicsFailures
-  });
-  state.recommendation = result;
+  recommendationOverview.hidden = true;
+  recommendationNotice.hidden = true;
   recommendationBody.hidden = true;
 
-  if (result.outcome === "no-deficiency") {
+  const selectedSeries = state.series.filter((color) => isSeriesSelected(color.hex));
+  seriesSummary.textContent = selectedSeries.length + " de " + state.series.length +
+    (state.series.length === 1 ? " serie considerada" : " series consideradas");
+
+  const contrast = evaluation.contrast || { text: [], graphics: [] };
+  const selectedLabs = selectedSeries.map((color) => color.lab);
+  const totalFailures =
+    (contrast.text || []).filter((group) => !group.passes).length +
+    (contrast.graphics || []).filter((group) => !group.passes).length;
+  // Salida temprana (sprint 5, bloque 2): solo fallos 1.4.11 de rol serie
+  // cuyo primer plano coincide (ΔE00 < 2,5) con una serie considerada.
+  const seriesFailures = (contrast.graphics || []).filter((group) =>
+    !group.passes && (group.roles || []).includes("series") &&
+    selectedLabs.some((lab) => ciede2000(rgbToLab(group.foreground.rgb), lab) < 2.5)).length;
+  const outsideFailures = totalFailures - seriesFailures;
+
+  if (state.simulation.type === "none") {
     stopPreviewIfActive();
-    setRecommendationStatus("info", "Selecciona un tipo de deficiencia en el bloque de simulación para generar la recomendación.");
+    state.recommendation = null;
+    renderRecommendationOverview(selectedSeries, seriesFailures);
     return;
   }
+  state.overview = null;
+
+  const result = recommendPalette(recommendationInput(state.simulation.type, selectedSeries, seriesFailures));
+  state.recommendation = result;
+  const deficiency = SIMULATION_LABELS[result.deficiencyType] || SIMULATION_LABELS[state.simulation.type];
+
   if (result.outcome === "insufficient-series") {
     stopPreviewIfActive();
-    setRecommendationStatus(
-      "info",
-      state.series.length >= 2
-        ? "Marca al menos dos series consideradas para recomendar una paleta."
-        : "Se necesitan al menos dos colores de serie para recomendar una paleta."
-    );
+    setRecommendationHeading("Series insuficientes",
+      state.series.length >= 2 ? "Marca al menos dos series consideradas para recomendar una paleta."
+        : "Se necesitan al menos dos colores de serie para recomendar una paleta.");
     return;
   }
   if (result.outcome === "compliant") {
     stopPreviewIfActive();
-    setRecommendationStatus(
-      "ok",
-      "La paleta original cumple bajo " + SIMULATION_LABELS[result.deficiencyType] +
-        " a severidad máxima: sin fallos de contraste en los pares evaluados y ΔE00 mínimo " +
-        formatNumber(result.minDelta) + " (umbral " + formatNumber(result.threshold, 1) +
-        "). No se propone reemplazo."
-    );
+    setRecommendationHeading("Cumple sin reemplazo",
+      "La paleta considerada cumple bajo " + deficiency + " a severidad máxima: sin fallos de contraste en sus pares y ΔE00 mínimo " +
+      formatNumber(result.minDelta) + " (umbral " + formatNumber(result.threshold, 1) + ").");
+    if (outsideFailures > 0) {
+      renderStatusInto(recommendationNotice, "warning",
+        "Quedan " + outsideFailures + (outsideFailures === 1 ? " incumplimiento" : " incumplimientos") +
+        " de contraste fuera del conjunto de series (texto, bordes, ejes): una paleta de series no puede corregirlos; el detalle está en Contraste.");
+    }
     return;
   }
   if (result.outcome === "redesign") {
     stopPreviewIfActive();
     const familyLabel = result.family === "sequential" ? "secuencial" : "categórico";
-    const text = result.exhausted
+    setRecommendationHeading("Rediseño recomendado", result.exhausted
       ? "Ningún esquema " + familyLabel + " acreditado superó la revalidación con " + result.seriesCount +
-        " series y umbral " + formatNumber(state.threshold, 1) + " (se probaron " + result.attempts.length +
-        "). Se recomienda rediseñar: reducir series, agrupar categorías o reforzar con etiquetas y formas."
-      : "El dashboard tiene " + result.seriesCount + " series y el mayor esquema " + familyLabel +
-        " acreditado para " + SIMULATION_LABELS[result.deficiencyType] + " dispone de " + result.maxAvailable +
-        " colores. Se recomienda rediseñar: reducir series, agrupar categorías o reforzar con etiquetas y formas.";
-    setRecommendationStatus("warning", text);
+      " series y umbral " + formatNumber(state.threshold, 1) + " (se probaron " + result.attempts.length + ")."
+      : "El dashboard tiene " + result.seriesCount + " series y el mayor esquema " + familyLabel + " acreditado para " +
+      deficiency + " dispone de " + result.maxAvailable + " colores.");
+    renderStatusInto(recommendationNotice, "warning",
+      "Se recomienda reducir series, agrupar categorías o reforzar con etiquetas y formas.");
     return;
   }
 
-  // Propuesta con esquema elegido: documenta qué se eligió y por qué.
-  setRecommendationStatus("ok", "Propuesta generada con el esquema " + result.scheme.name + ".");
-  recommendationReason.textContent =
-    "Elegido por ser el primer esquema acreditado para " + SIMULATION_LABELS[result.deficiencyType] +
-    " con capacidad " + result.scheme.size + " ≥ " + result.mapping.length + " series que superó la revalidación: " +
-    result.revalidation.iterations + (result.revalidation.iterations === 1 ? " esquema probado" : " esquemas probados") +
-    ", " + result.revalidation.swaps + (result.revalidation.swaps === 1 ? " sustitución" : " sustituciones") +
-    ", ΔE00 mínimo revalidado " + formatNumber(result.revalidation.minDelta) + ".";
+  // Propuesta.
+  setRecommendationHeading(result.scheme.name,
+    "Primer esquema acreditado para " + deficiency + " con capacidad " + result.scheme.size + " ≥ " +
+    result.mapping.length + " series que superó la revalidación.");
+  kpiIterations.textContent = String(result.revalidation.iterations);
+  kpiSwaps.textContent = String(result.revalidation.swaps);
+  kpiDelta.textContent = formatNumber(result.revalidation.minDelta);
+  fillBand(bandRecOriginal, result.mapping.map((entry) => entry.originalHex));
+  fillBand(bandRecProposed, result.mapping.map((entry) => entry.proposedHex));
 
   recommendationMapping.replaceChildren();
   for (const entry of result.mapping) {
-    const row = document.createElement("li");
-    row.className = "color-fila";
-    row.append(colorChip(entry.originalHex), colorChip(entry.proposedHex));
+    const row = el("div", "r");
+    const original = el("div");
+    original.append(swatch(entry.originalHex), el("span", "mono", entry.originalHex));
+    const proposed = el("div");
+    proposed.append(swatch(entry.proposedHex), el("span", "mono", entry.proposedHex));
+    row.append(original, proposed);
     recommendationMapping.append(row);
   }
   previewNote.hidden = !(evaluation.stats && evaluation.stats.canvasTotal > 0);
   recommendationBody.hidden = false;
-
-  // Con la previsualización activa, la nueva propuesta se re-aplica.
-  if (state.previewActive) {
-    sendPreview(true);
-  }
-}
-
-/** Recalcula y pinta la sección de distinguibilidad con el estado vigente. */
-function renderDistinguishability() {
-  const palette = state.evaluation && state.evaluation.ok ? state.evaluation.palette || [] : [];
-  state.series = palette.filter((color) => color.roles.includes("series")).slice(0, MAX_SERIES_COLORS);
-
-  if (state.series.length < 2) {
-    distConfigElement.textContent = "Se necesitan al menos dos colores de serie para evaluar distinguibilidad.";
-    matrixContainer.replaceChildren();
-    seriesLegend.replaceChildren();
-    conflictList.replaceChildren();
-    state.distSimulated = null;
-    state.distOriginal = null;
-    updateBadge();
-    renderRecommendation();
-    return;
-  }
-
-  state.simulatedRgbs = state.series.map((color) => simulateColor(color.rgb));
-  state.distSimulated = computeDistinguishability(state.simulatedRgbs, { threshold: state.threshold });
-  state.distOriginal = computeDistinguishability(state.series.map((color) => color.rgb), {
-    threshold: state.threshold
-  });
-
-  const { type, severity } = state.simulation;
-  const method = type === "tritanopia" ? "método exacto de Brettel (1997)" : "matrices de Machado (2009)";
-  distConfigElement.textContent =
-    type === "none"
-      ? "Simulación: ninguna (los ΔE00 corresponden a los colores originales) · umbral vigente: ΔE00 < " + formatNumber(state.threshold, 1)
-      : "Simulación aplicada: " + SIMULATION_LABELS[type] +
-      (type === "tritanopia" ? "" : ", severidad " + formatNumber(severity, 1)) +
-      " · " + method + " · umbral vigente: ΔE00 < " + formatNumber(state.threshold, 1);
-
-  renderMatrix();
-  renderLegend();
-  renderConflicts();
-  updateBadge();
-  renderRecommendation();
+  if (state.previewActive) sendPreview(true);
 }
 
 // ------------------------------------------------------------------
 // Orquestación
 // ------------------------------------------------------------------
 
-/** Pinta toda la evaluación disponible. */
 function render() {
   const evaluation = state.evaluation;
+  renderTabState();
   if (!evaluation || !evaluation.ok) {
     emptyState.hidden = false;
+    summaryBlock.hidden = true;
     paletteSection.hidden = true;
     contrastSection.hidden = true;
     distSection.hidden = true;
     approximateNotice.hidden = true;
     recommendationSection.hidden = true;
+    exportButton.hidden = true;
     resetPreviewUi();
     setEvaluateButtonState(false);
     return;
   }
 
   emptyState.hidden = true;
+  exportButton.hidden = false;
   paletteSection.hidden = false;
   contrastSection.hidden = false;
   distSection.hidden = false;
   approximateNotice.hidden = evaluation.approximate !== true;
 
-  paletteSummary.textContent = "Paleta detectada (" + (evaluation.palette || []).length + " colores)";
+  const paletteSize = (evaluation.palette || []).length;
+  paletteCount.textContent = paletteSize + (paletteSize === 1 ? " color" : " colores");
   const levelNames = (evaluation.levels || []).map((level) => LEVEL_LABELS[level] || level);
-  levelsElement.textContent = "Nivel de extracción: " + (levelNames.join(" + ") || "ninguno");
+  levelsElement.textContent = "Extracción: " + (levelNames.join(" + ") || "ninguna") + ".";
 
   renderPalette();
   const contrast = evaluation.contrast || { text: [], graphics: [] };
-  renderPairList(textPairsList, contrast.text, "No se encontraron pares de texto evaluables.");
-  renderPairList(graphicPairsList, contrast.graphics, "No se encontraron objetos gráficos evaluables.");
-  renderDistinguishability();
-
+  renderPairList(textPairsList, contrast.text, "text", "No se encontraron pares de texto evaluables.");
+  renderPairList(graphicPairsList, contrast.graphics, "graphic", "No se encontraron objetos gráficos evaluables.");
   const failingContrast =
     (contrast.text || []).filter((group) => !group.passes).length +
     (contrast.graphics || []).filter((group) => !group.passes).length;
+  contrastCount.textContent = failingContrast === 0 ? "todo cumple"
+    : failingContrast + (failingContrast === 1 ? " incumple" : " incumplen");
+
+  renderDistinguishability();
+
   const conflictCount = state.distSimulated ? state.distSimulated.conflicts.length : 0;
-  const elapsed = Math.round(evaluation.elapsedMs || 0);
-  const summary =
-    "Evaluación en " + elapsed + " ms: " +
-    failingContrast + (failingContrast === 1 ? " par de contraste incumple" : " pares de contraste incumplen") +
-    " · " + conflictCount + (conflictCount === 1 ? " par de series confundible" : " pares de series confundibles");
-  setStatus(failingContrast + conflictCount > 0 ? "warning" : "ok", summary + ".");
+  announce("Evaluación terminada: " + failingContrast +
+    (failingContrast === 1 ? " par de contraste incumple" : " pares de contraste incumplen") +
+    " y " + conflictCount + (conflictCount === 1 ? " par de series confundible" : " pares de series confundibles") + ".");
+
+  const adopted = state.suggestionAdopted;
+  state.suggestionAdopted = null;
+  if (adopted) {
+    setStatus("info", "Se aplicó la última simulación usada (" + SIMULATION_LABELS[adopted.type] +
+      (adopted.type === "tritanopia" ? "" : " " + formatNumber(adopted.severity, 1)) +
+      ") como valor sugerido; cámbiala en «Tipo de deficiencia» si no la quieres.");
+  }
   setEvaluateButtonState(true);
 }
 
-/** Lanza la evaluación completa a través del service worker. */
 async function runEvaluation() {
   evaluateButton.disabled = true;
-  setStatus("info", "Analizando la página…");
+  evaluateButton.textContent = "Analizando la página…";
+  document.querySelector("main").setAttribute("aria-busy", "true");
+  clearStatus();
+  announce("Analizando la página…");
   try {
-    const response = await chrome.runtime.sendMessage({ type: "RUN_EVALUATION" });
+    if (state.simulation.type === "none") {
+      const suggested = await loadSuggestedSimulation();
+      if (suggested) {
+        state.simulation = suggested;
+        state.suggestionAdopted = suggested;
+        persistTabSimulation();
+        updateSimulationControls();
+        await syncPageFilter({ announce: false });
+      }
+    }
+    const response = await chrome.runtime.sendMessage({ type: "RUN_EVALUATION", tabId: state.tabId });
     if (!response) {
       setStatus("error", ERROR_MESSAGES.unexpected);
       return;
@@ -957,7 +1216,6 @@ async function runEvaluation() {
         text = "No se pudo acceder a este archivo local. Activa «Permitir acceso a URL de archivo» para esta extensión en chrome://extensions.";
       }
       if (response.error === "unsupported-page" && response.url) {
-        // Decir qué pestaña se rechazó orienta al usuario a cambiar de pestaña.
         const shortUrl = response.url.length > 60 ? response.url.slice(0, 57) + "…" : response.url;
         text += " Pestaña activa: " + shortUrl + ". Cambia a la pestaña del dashboard y vuelve a intentarlo.";
       }
@@ -969,15 +1227,43 @@ async function runEvaluation() {
       return;
     }
     state.evaluation = response;
+    // Evaluación nueva: todas las secciones vuelven a salir abiertas.
+    state.ui.collapsed = {};
+    saveUiState();
+    restoreSectionState();
     render();
   } catch (error) {
     setStatus("error", "No se pudo comunicar con el proceso en segundo plano. Vuelve a intentarlo.");
   } finally {
     evaluateButton.disabled = false;
+    document.querySelector("main").setAttribute("aria-busy", "false");
+    setEvaluateButtonState(!!(state.evaluation && state.evaluation.ok));
   }
 }
 
-/** Carga la evaluación guardada para la pestaña activa. */
+async function reconcilePageState() {
+  let filter = { active: false, config: null };
+  let previewActive = false;
+  try {
+    const response = await chrome.runtime.sendMessage({ type: "GET_PAGE_STATE", tabId: state.tabId });
+    if (response && response.filter) filter = response.filter;
+    previewActive = !!(response && response.previewActive);
+  } catch (error) {
+    // Sin respuesta: se asume página limpia.
+  }
+  if (filter.active && filter.config && filter.config.type in SIMULATION_LABELS) {
+    state.simulation = { type: filter.config.type, severity: typeof filter.config.severity === "number" ? filter.config.severity : 1 };
+    state.filterOnPage = true;
+  } else {
+    state.filterOnPage = false;
+    if (state.simulation.type !== "none") state.simulation = { type: "none", severity: state.simulation.severity };
+  }
+  persistTabSimulation();
+  state.previewActive = previewActive;
+  setPreviewSwitch(previewActive);
+  updateSimulationControls();
+}
+
 async function loadEvaluation() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -987,14 +1273,34 @@ async function loadEvaluation() {
       render();
       return;
     }
-    const stored = await chrome.storage.session.get("evaluation:" + state.tabId);
+    const stored = await chrome.storage.session.get(["evaluation:" + state.tabId, "ui:" + state.tabId]);
     state.evaluation = stored["evaluation:" + state.tabId] || null;
+    const ui = stored["ui:" + state.tabId];
+    if (ui && typeof ui === "object") {
+      state.ui = {
+        family: ui.family || null,
+        collapsed: ui.collapsed || {},
+        scrollY: typeof ui.scrollY === "number" ? ui.scrollY : 0,
+        selection: ui.selection || null,
+        selectionEvaluatedAt: ui.selectionEvaluatedAt || null
+      };
+    }
+    state.family = state.ui.family === "sequential" ? "sequential" : "qualitative";
+    await loadTabSimulation();
   } catch (error) {
     state.evaluation = null;
   }
+  state.selectionSource = null;
+  restoreSectionState();
+  updateSimulationControls();
   render();
+  await reconcilePageState();
+  renderPalette();
+  renderDistinguishability();
   if (!state.evaluation) {
-    setStatus("info", "Listo para evaluar la pestaña activa.");
+    announce("Pestaña sin evaluar. Pulsa «Extraer paleta y evaluar».");
+  } else if (state.ui.scrollY > 0) {
+    window.scrollTo({ top: state.ui.scrollY, behavior: "auto" });
   }
 }
 
@@ -1004,8 +1310,64 @@ async function loadEvaluation() {
 
 evaluateButton.addEventListener("click", runEvaluation);
 
+// HU08 / RF08 (0.6.5): «Exportar PDF» abre el reporte como página propia
+// de la extensión en una pestaña nueva, con los datos pasados por el
+// almacenamiento de sesión; esa página lanza el diálogo de impresión y el
+// PDF lo genera el propio navegador (Guardar como PDF).
+exportButton.addEventListener("click", async () => {
+  const evaluation = state.evaluation;
+  if (!evaluation || !evaluation.ok) return;
+  const data = buildReportData({
+    evaluation,
+    extensionVersion: chrome.runtime.getManifest().version,
+    simulation: state.simulation,
+    threshold: state.threshold,
+    family: state.family,
+    series: state.series,
+    selection: state.seriesSelection,
+    notes: state.seriesNotes,
+    simulatedRgbs: state.simulatedRgbs,
+    distSimulated: state.distSimulated,
+    distOriginal: state.distOriginal,
+    recommendation: state.recommendation,
+    overview: state.overview
+  });
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  try {
+    await chrome.storage.session.set({ ["report:" + id]: data });
+    await chrome.tabs.create({ url: chrome.runtime.getURL("src/ui/reporte/reporte.html?id=" + id) });
+    setStatus("ok", "Reporte abierto en una pestaña nueva. Guárdalo eligiendo «Guardar como PDF» en el diálogo de impresión.");
+  } catch (error) {
+    setStatus("error", "No se pudo abrir la pestaña del reporte. Vuelve a intentarlo.");
+  }
+});
+
+clearButton.addEventListener("click", async () => {
+  if (state.previewActive) {
+    try { await chrome.runtime.sendMessage({ type: "CLEAR_PREVIEW", tabId: state.tabId }); } catch (error) { /* sin página */ }
+  }
+  if (state.filterOnPage) {
+    try { await chrome.runtime.sendMessage({ type: "CLEAR_SIMULATION", tabId: state.tabId }); } catch (error) { /* sin página */ }
+  }
+  resetPreviewUi();
+  state.simulation = { type: "none", severity: 1 };
+  state.filterOnPage = false;
+  if (state.tabId) {
+    try {
+      await chrome.storage.session.remove(["evaluation:" + state.tabId, "ui:" + state.tabId, "sim:" + state.tabId]);
+    } catch (error) { /* sin sesión */ }
+    try { await chrome.action.setBadgeText({ text: "", tabId: state.tabId }); } catch (error) { /* sin insignia */ }
+  }
+  state.evaluation = null;
+  state.selectionSource = null;
+  state.ui = { family: null, collapsed: {}, scrollY: 0, selection: null, selectionEvaluatedAt: null };
+  render();
+  updateSimulationControls();
+  setStatus("ok", "Todo limpio: simulación y previsualización retiradas y evaluación descartada.");
+});
+
 deficiencySelect.addEventListener("change", () => {
-  state.simulation.type = deficiencySelect.value;
+  state.simulation.type = deficiencySelect.value in SIMULATION_LABELS ? deficiencySelect.value : "none";
   onSimulationChanged();
 });
 
@@ -1014,24 +1376,29 @@ severitySlider.addEventListener("input", () => {
   onSimulationChanged();
 });
 
-// Paso 1 del algoritmo: la familia la indica el usuario; al cambiarla, la
-// propuesta se recalcula con los datos ya evaluados, sin repetir la evaluación.
 familySelect.addEventListener("change", () => {
   state.family = familySelect.value === "sequential" ? "sequential" : "qualitative";
-  try {
-    chrome.storage.local.set({ paletteFamily: state.family });
-  } catch (error) {
-    // Sin almacenamiento se mantiene solo en memoria.
-  }
+  state.ui.family = state.family;
+  saveUiState();
   renderRecommendation();
 });
 
-// Conmutador de previsualización (RF07): aplica o retira sin recargar.
-previewToggle.addEventListener("change", () => {
-  sendPreview(previewToggle.checked);
+// «Revisar»: abre y cierra las casillas de series consideradas.
+seriesReview.addEventListener("click", () => {
+  const open = seriesPanel.hidden;
+  seriesPanel.hidden = !open;
+  seriesReview.setAttribute("aria-expanded", String(open));
+  seriesReview.textContent = open ? "Ocultar" : "Revisar";
+  if (open) {
+    const first = seriesSelectionList.querySelector("input");
+    if (first) first.focus();
+  }
 });
 
-// El umbral es un parámetro del panel: recalcular al cambiarlo, sin botón.
+previewToggle.addEventListener("click", () => {
+  sendPreview(previewToggle.getAttribute("aria-checked") !== "true");
+});
+
 thresholdInput.addEventListener("input", () => {
   const value = Number(thresholdInput.value);
   if (Number.isFinite(value) && value >= 1 && value <= 30) {
@@ -1040,24 +1407,77 @@ thresholdInput.addEventListener("input", () => {
   }
 });
 
-// Nueva evaluación guardada para esta pestaña (p. ej. desde otra superficie).
+// Selector de tema: clic elige; flechas mueven la selección.
+themeGroup.addEventListener("click", (event) => {
+  const radio = event.target.closest("[role=radio]");
+  if (radio) chooseTheme(radio.dataset.tema);
+});
+
+themeGroup.addEventListener("keydown", (event) => {
+  const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "Enter"];
+  if (!keys.includes(event.key)) return;
+  event.preventDefault();
+  const current = themeRadios.findIndex((radio) => radio.dataset.tema === state.theme);
+  let next;
+  if (event.key === " " || event.key === "Enter") {
+    const radio = event.target.closest("[role=radio]");
+    next = radio ? themeRadios.indexOf(radio) : 0;
+  } else if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+    next = current === -1 ? 0 : (current + 1) % themeRadios.length;
+  } else {
+    next = current === -1 ? themeRadios.length - 1 : (current - 1 + themeRadios.length) % themeRadios.length;
+  }
+  chooseTheme(themeRadios[next].dataset.tema);
+});
+
+for (const section of document.querySelectorAll("details.bloque")) {
+  section.addEventListener("toggle", () => {
+    if (state.restoringSections || !section.dataset.section) return;
+    // Solo se guardan las secciones plegadas; abrir una borra su clave
+    // (el evento toggle llega en diferido, también tras una reapertura por código).
+    if (section.open) delete state.ui.collapsed[section.dataset.section];
+    else state.ui.collapsed[section.dataset.section] = true;
+    saveUiState();
+  });
+}
+
+window.addEventListener("scroll", scheduleScrollSave, { passive: true });
+
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === "session" && state.tabId && changes["evaluation:" + state.tabId]) {
     state.evaluation = changes["evaluation:" + state.tabId].newValue || null;
     render();
   }
+  // El tema es global: un cambio desde otro panel se aplica aquí.
+  if (areaName === "local" && changes.tema) {
+    applyTheme(changes.tema.newValue || null);
+  }
 });
 
-// El panel sigue a la pestaña activa de su ventana.
 chrome.tabs.onActivated.addListener(() => {
   loadEvaluation();
 });
 
-// Arranque: recuperar configuración y última evaluación de la pestaña.
+async function migrateLocalStorage() {
+  try {
+    const stored = await chrome.storage.local.get(["lastSimulation", "simulationType", "simulationSeverity", "paletteFamily"]);
+    if (!stored.lastSimulation && typeof stored.simulationType === "string" && stored.simulationType !== "none") {
+      await chrome.storage.local.set({
+        lastSimulation: {
+          type: stored.simulationType,
+          severity: typeof stored.simulationSeverity === "number" ? stored.simulationSeverity : 1
+        }
+      });
+    }
+    await chrome.storage.local.remove(["simulationType", "simulationSeverity", "paletteFamily"]);
+  } catch (error) {
+    // Sin almacenamiento: nada que migrar.
+  }
+}
+
 (async function init() {
   thresholdInput.value = String(DEFAULT_CONFUSION_THRESHOLD);
-  await loadStoredSimulation();
-  await loadStoredFamily();
-  updateSimulationControls();
+  await loadTheme();
+  await migrateLocalStorage();
   await loadEvaluation();
 })();

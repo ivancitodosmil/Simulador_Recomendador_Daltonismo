@@ -36,7 +36,13 @@
     const anchoUtil = ANCHO - MARGEN.izq - MARGEN.der;
     const altoUtil = ALTO - MARGEN.sup - MARGEN.inf;
 
-    document.getElementById("numero-clases").textContent = NUM_CLASES;
+    // Numero de escalones efectivo: NUM_CLASES de datos.js, alternable
+    // SIN editar archivos abriendo el panel con ?clases=5 (o ?clases=3),
+    // como necesita la calibracion del capitulo cinco.
+    const parametroClases = new URLSearchParams(location.search).get("clases");
+    const CLASES = parametroClases === "5" ? 5 : (parametroClases === "3" ? 3 : NUM_CLASES);
+
+    document.getElementById("numero-clases").textContent = CLASES;
 
     const svg = d3.select("#mapa-calor")
       .append("svg")
@@ -52,9 +58,9 @@
     const valores = REGIONES.flatMap(r => VENTAS_MENSUALES[r]);
     const minimo = Math.min(...valores);
     const maximo = Math.max(...valores);
-    const amplitud = (maximo - minimo) / NUM_CLASES;
-    const RAMPA = rampaParaClases(NUM_CLASES);
-    const claseDe = v => Math.min(NUM_CLASES - 1, Math.floor((v - minimo) / amplitud));
+    const amplitud = (maximo - minimo) / CLASES;
+    const RAMPA = rampaParaClases(CLASES);
+    const claseDe = v => Math.min(CLASES - 1, Math.floor((v - minimo) / amplitud));
 
     g.append("g").attr("class", "eje").call(d3.axisTop(x));
     g.append("g").attr("class", "eje").call(d3.axisLeft(y));
@@ -79,7 +85,7 @@
     const leyenda = document.getElementById("leyenda-mapa");
     RAMPA.forEach((color, k) => {
       const desde = Math.round(minimo + k * amplitud);
-      const hasta = k === NUM_CLASES - 1 ? maximo : Math.round(minimo + (k + 1) * amplitud);
+      const hasta = k === CLASES - 1 ? maximo : Math.round(minimo + (k + 1) * amplitud);
       const li = document.createElement("li");
       const muestra = document.createElement("span");
       muestra.className = "muestra";

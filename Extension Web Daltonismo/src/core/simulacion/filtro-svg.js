@@ -48,6 +48,11 @@ const CONTAINER_CANDIDATES = ["[data-dashboard]", "#dashboard", ".dashboard", "[
 // Estado del filtro activo (vive en el módulo, no en el DOM del sitio).
 let activeTarget = null;
 let previousInlineFilter = "";
+// Si el contenedor no tenia atributo style antes del filtro, al retirar
+// se elimina tambien el atributo vacio: restauracion exacta, sin restos.
+let targetHadStyleAttribute = false;
+// Configuracion aplicada, para poder reportar el estado real (sprint 5).
+let activeConfig = null;
 
 /** Resuelve el contenedor del dashboard con la misma heurística del nivel 1. */
 export function resolveContainer(doc = document) {
@@ -117,9 +122,18 @@ export function applySimulationFilter(config, container = null, doc = document) 
 
   if (activeTarget !== target) {
     previousInlineFilter = target.style.filter || "";
+    targetHadStyleAttribute = target.hasAttribute("style");
     activeTarget = target;
   }
+  activeConfig = { type: config.type, severity: config.severity };
   target.style.filter = "url(#" + FILTER_ID + ")";
+}
+
+/** Estado real del filtro en esta página (reconciliación, sprint 5). */
+export function getSimulationFilterState() {
+  return activeTarget
+    ? { active: true, config: activeConfig }
+    : { active: false, config: null };
 }
 
 /** Retira el filtro y restaura el estado original de la página. */
@@ -129,10 +143,15 @@ export function clearSimulationFilter(doc = document) {
       activeTarget.style.filter = previousInlineFilter;
     } else {
       activeTarget.style.removeProperty("filter");
+      if (!targetHadStyleAttribute && activeTarget.getAttribute("style") === "") {
+        activeTarget.removeAttribute("style");
+      }
     }
     activeTarget = null;
     previousInlineFilter = "";
+    targetHadStyleAttribute = false;
   }
+  activeConfig = null;
   const host = doc.getElementById(HOST_ID);
   if (host) {
     host.remove();

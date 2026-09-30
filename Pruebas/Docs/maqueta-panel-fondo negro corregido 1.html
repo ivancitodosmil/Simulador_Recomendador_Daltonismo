@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maqueta del panel</title>
+<style>
+/* Concepto: instrumento de medida. La paleta del propio dashboard es la unica
+   nota de color de la interfaz; todo lo demas es neutro y preciso.
+   Colores = tokens 0.6.0 ya auditados (78 comprobaciones), sin anadir ninguno. */
+.panel{
+  --fondo-pagina:#F2F5F9; --superficie:#FFFFFF; --superficie-2:#E8EDF4;
+  --borde:#64707F; --borde-suave:#C9D2DE;
+  --texto:#16202C; --texto-secundario:#465362;
+  --acento:#155EA2; --acento-texto:#FFFFFF;
+  --correcto:#00563F; --correcto-suave:#DCF2E8;
+  --aviso:#8A6100; --aviso-suave:#F5EAC9;
+  --error:#7F2B00; --error-suave:#FBE3D6;
+  --fuente-ui: system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --fuente-mono: ui-monospace,Consolas,"Cascadia Mono","Courier New",monospace;
+  --t-xs:12px; --t-s:13px; --t-m:14px; --t-l:16px; --t-xl:22px;
+  --r-s:4px; --r-m:8px;
+  color-scheme:light;
+}
+.panel.oscuro{
+  --fondo-pagina:#0F1420; --superficie:#172031; --superficie-2:#202B40; --borde:#8794AA; --borde-suave:#2A3650; --texto:#E6ECF5; --texto-secundario:#A5B1C4; --acento:#8AB4F8; --acento-texto:#0F1420; --correcto:#78CFBE; --correcto-suave:#15322F; --aviso:#E5C46E; --aviso-suave:#322D1C; --error:#F28080; --error-suave:#3B2230;
+  color-scheme:dark;
+}
+
+/* ---------- pagina de la maqueta ---------- */
+html,body{margin:0;background:#DDE3EA;font-family:system-ui,"Segoe UI",Roboto,Arial,sans-serif;color:#16202C}
+.lienzo{padding:24px 16px 48px;display:flex;flex-wrap:wrap;gap:32px;justify-content:center;align-items:flex-start}
+.marco{display:flex;flex-direction:column;gap:8px;max-width:100%}
+.marco figcaption{font-size:13px;color:#465362}
+h1.maq{font-size:17px;font-weight:600;text-align:center;margin:24px 16px 0}
+p.maq{font-size:13px;color:#465362;text-align:center;margin:6px 16px 0}
+
+/* ---------- panel ---------- */
+.panel{width:380px;max-width:100%;background:var(--fondo-pagina);color:var(--texto);
+  font-family:var(--fuente-ui);font-size:var(--t-m);line-height:1.45;
+  border:1px solid var(--borde-suave);border-radius:var(--r-m);overflow:hidden}
+.panel *{box-sizing:border-box}
+.mono{font-family:var(--fuente-mono);font-variant-numeric:tabular-nums}
+.sec{color:var(--texto-secundario)}
+.solo-lector{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.cab{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--superficie);
+  border-bottom:1px solid var(--borde-suave);position:sticky;top:0;z-index:2}
+.logo{width:26px;height:26px;border-radius:6px;display:grid;grid-template-columns:1fr 1fr;overflow:hidden;
+  border:1.5px solid var(--texto)}
+.logo i:nth-child(1){background:#E69F00}.logo i:nth-child(2){background:#56B4E9}
+.logo i:nth-child(3){background:#009E73}.logo i:nth-child(4){background:#CC79A7}
+.cab b{font-size:15px;font-weight:650;display:block;line-height:1.2;white-space:nowrap}
+.cab .txt{flex:1 0 auto}
+.cab .tema{margin-left:auto}
+.tema{display:inline-flex;border:1px solid var(--borde);border-radius:var(--r-s);overflow:hidden;flex:none}
+.tema button{font:inherit;font-size:var(--t-xs);font-weight:600;min-height:28px;padding:4px 8px;border:0;background:var(--superficie);color:var(--texto-secundario);cursor:pointer}
+.tema button + button{border-left:1px solid var(--borde)}
+.tema button[aria-checked="true"]{background:var(--acento);color:var(--acento-texto)}
+.cab{flex-wrap:wrap}
+.cab small{font-size:var(--t-xs);color:var(--texto-secundario)}
+
+.cuerpo{padding:12px;display:flex;flex-direction:column;gap:12px}
+.bloque{background:var(--superficie);border:1px solid var(--borde-suave);border-radius:var(--r-m)}
+.bloque > .in{padding:14px 14px 16px;display:flex;flex-direction:column;gap:12px}
+.tit{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.tit h2{margin:0;font-size:var(--t-m);font-weight:650}
+.tit span{font-size:var(--t-s);color:var(--texto-secundario)}
+
+details.bloque > summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:baseline;gap:8px}
+details.bloque > summary::-webkit-details-marker{display:none}
+details.bloque > summary h2{margin:0;font-size:var(--t-m);font-weight:650;flex:1}
+details.bloque > summary span{font-size:var(--t-s);color:var(--texto-secundario)}
+details.bloque > summary::after{content:"";width:7px;height:7px;border-right:1.5px solid var(--texto-secundario);
+  border-bottom:1.5px solid var(--texto-secundario);transform:rotate(45deg) translateY(-2px);margin-left:4px}
+details.bloque[open] > summary::after{transform:rotate(-135deg) translateY(-1px)}
+details.bloque[open] > summary{border-bottom:1px solid var(--borde-suave)}
+details.bloque > .in{padding:12px 14px 14px}
+
+label.et{font-size:var(--t-s);color:var(--texto-secundario);display:block;margin-bottom:4px}
+select{width:100%;font:inherit;font-size:var(--t-m);color:var(--texto);background:var(--superficie);
+  border:1px solid var(--borde);border-radius:var(--r-s);padding:7px 10px;min-height:34px}
+.fila-sev{display:flex;align-items:center;gap:10px}
+.fila-sev input{flex:1;accent-color:var(--acento);min-height:24px}
+.ayuda{font-size:var(--t-s);color:var(--texto-secundario);margin:0}
+
+.btn{font:inherit;font-size:var(--t-m);font-weight:600;border-radius:var(--r-s);min-height:36px;padding:8px 14px;cursor:pointer;width:100%}
+.btn.prim{background:var(--acento);color:var(--acento-texto);border:1px solid var(--acento)}
+.btn.secu{background:var(--superficie);color:var(--acento);border:1px solid var(--borde)}
+.btn.texto{background:transparent;border:0;color:var(--texto-secundario);font-weight:500;width:auto;padding:8px 4px;text-decoration:underline;text-underline-offset:3px}
+.btn:focus-visible,select:focus-visible,summary:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+
+/* franja de la paleta: la nota de color del panel */
+.franja{display:flex;flex-direction:column;gap:6px}
+.franja .fila{display:grid;grid-template-columns:92px 1fr;align-items:center;gap:8px}
+.franja .fila span{font-size:var(--t-xs);color:var(--texto-secundario)}
+.banda{display:flex;height:22px;border:1px solid var(--borde);border-radius:var(--r-s);overflow:hidden}
+.banda i{flex:1}
+
+/* marcador */
+.marcador{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--borde-suave)}
+.dato{padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.dato:nth-child(odd){border-right:1px solid var(--borde-suave)}
+.dato:nth-child(-n+2){border-bottom:1px solid var(--borde-suave)}
+.dato .v{font-size:var(--t-xl);font-weight:650;line-height:1.1;font-variant-numeric:tabular-nums}
+.dato .v.mal{color:var(--error)}
+.dato .v small{font-size:var(--t-s);font-weight:500;color:var(--texto-secundario);margin-left:4px}
+.dato .e{font-size:var(--t-s);color:var(--texto)}
+.dato .d{font-size:var(--t-xs);color:var(--texto-secundario)}
+
+/* muestras */
+.m{display:inline-block;width:16px;height:16px;border-radius:3px;border:1px solid var(--borde);flex:none;vertical-align:middle}
+.par{display:inline-flex;border:1px solid var(--borde);border-radius:3px;overflow:hidden;flex:none}
+.par i{width:18px;height:18px}
+
+/* paleta */
+.tabla-pal{display:flex;flex-direction:column}
+.tabla-pal .cab-t,.tabla-pal .r{display:grid;grid-template-columns:38px 1fr 1fr;gap:10px;align-items:center}
+.tabla-pal .cab-t{font-size:var(--t-xs);color:var(--texto-secundario);padding-bottom:6px;border-bottom:1px solid var(--borde-suave)}
+.tabla-pal .r{padding:7px 0;border-bottom:1px solid var(--borde-suave)}
+.tabla-pal .r:last-child{border-bottom:0}
+.tabla-pal .hex{font-size:var(--t-s)}
+.tabla-pal .rol{display:block;font-size:var(--t-xs);color:var(--texto-secundario)}
+
+/* pastillas */
+.p{font-size:var(--t-xs);font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.p.ok{background:var(--correcto-suave);color:var(--correcto)}
+.p.ko{background:var(--error-suave);color:var(--error)}
+
+/* contraste */
+.grupo-c{display:flex;flex-direction:column}
+.grupo-c h3{margin:0 0 4px;font-size:var(--t-s);font-weight:600}
+.grupo-c h3 span{font-weight:400;color:var(--texto-secundario)}
+.rc{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--borde-suave)}
+.rc:last-child{border-bottom:0}
+.muestra-txt{height:28px;box-shadow:0 0 0 1px var(--borde-suave);border-radius:var(--r-s);border:1px solid var(--borde-suave);display:grid;place-items:center;font-weight:650;font-size:14px}
+.muestra-obj{height:28px;border-radius:var(--r-s);border:1px solid var(--borde-suave);display:flex;align-items:center;justify-content:center}
+.muestra-obj i{width:22px;height:12px;border-radius:2px}
+.rc .num{font-size:var(--t-m);font-weight:600}
+.rc .num small{font-weight:400;color:var(--texto-secundario);font-size:var(--t-xs)}
+.rc .qd{font-size:var(--t-xs);color:var(--texto-secundario);display:block;font-family:var(--fuente-ui)}
+.rc .qd code{font-family:var(--fuente-mono);font-size:12px}
+
+/* matriz: triangulo inferior */
+.env-matriz{overflow-x:auto;position:relative;margin:0 -2px}
+table.matriz{border-collapse:separate;border-spacing:2px;table-layout:fixed;font-family:var(--fuente-mono);font-size:12px;font-variant-numeric:tabular-nums}
+table.matriz th{font-weight:500;color:var(--texto-secundario);padding:0}
+table.matriz thead th{height:26px;vertical-align:bottom}
+table.matriz th .m{width:14px;height:14px}
+table.matriz th.fila{text-align:left;padding-right:4px;white-space:nowrap}
+table.matriz td{width:38px;min-width:38px;height:24px;text-align:center;border-radius:3px;background:var(--superficie-2);color:var(--texto-secundario)}
+table.matriz td.v{background:var(--superficie-2);color:var(--texto)}
+table.matriz thead th{width:38px}
+table.matriz td.x{background:var(--error-suave);color:var(--error);font-weight:700}
+.leyenda-m{font-size:var(--t-xs);color:var(--texto-secundario);margin:0}
+.leyenda-m b{color:var(--error)}
+
+/* pares conflictivos con escala */
+.pares{display:flex;flex-direction:column;gap:12px}
+.parc{display:flex;flex-direction:column;gap:6px}
+.parc .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.parc .top .hx{font-size:var(--t-s)}
+.parc .top .p{margin-left:auto}
+.escala{position:relative;height:18px}
+.escala .pista{position:absolute;left:0;right:0;top:8px;height:2px;background:var(--borde-suave);border-radius:2px}
+.escala .zona{position:absolute;left:0;top:6px;height:6px;background:var(--error-suave);border-radius:2px}
+.escala .umbral{position:absolute;top:2px;width:1.5px;height:14px;background:var(--texto-secundario)}
+.escala .sim{position:absolute;top:4px;width:10px;height:10px;border-radius:50%;background:var(--error);margin-left:-5px}
+.escala .tip{position:absolute;top:4px;width:10px;height:10px;border-radius:50%;border:2px solid var(--texto);background:var(--superficie);margin-left:-5px}
+.cifras{display:flex;justify-content:space-between;font-size:var(--t-xs);color:var(--texto-secundario)}
+.cifras b{color:var(--texto);font-weight:600}
+
+/* recomendacion */
+.esquema{display:flex;flex-direction:column;gap:2px}
+.esquema b{font-size:var(--t-l);font-weight:650}
+.esquema span{font-size:var(--t-s);color:var(--texto-secundario)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:var(--t-s);color:var(--texto-secundario)}
+.kpis b{display:block;color:var(--texto);font-size:var(--t-l);font-variant-numeric:tabular-nums}
+.bandas-rec{display:flex;flex-direction:column;gap:6px}
+.map{display:flex;flex-direction:column}
+.map .cab-t,.map .r{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center}
+.map .cab-t{font-size:var(--t-xs);color:var(--texto-secundario);padding-bottom:6px;border-bottom:1px solid var(--borde-suave)}
+.map .r{padding:6px 0;border-bottom:1px solid var(--borde-suave)}
+.map .r:last-child{border-bottom:0}
+.map .r div{display:flex;align-items:center;gap:8px;font-size:var(--t-s)}
+.series-res{display:flex;justify-content:space-between;align-items:center;font-size:var(--t-s);padding:8px 10px;
+  background:var(--superficie-2);border-radius:var(--r-s)}
+.series-res a{color:var(--acento);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.interruptor{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:4px}
+.sw{position:relative;width:38px;height:22px;border-radius:999px;background:var(--acento);border:1px solid var(--acento);flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:18px;width:16px;height:16px;border-radius:50%;background:var(--acento-texto)}
+
+.pie{display:flex;gap:8px;align-items:center}
+.pie .btn.secu{flex:1}
+
+@media (prefers-reduced-motion:no-preference){ details.bloque > summary::after{transition:transform .15s} }
+</style>
+</head>
+<body>
+<h1 class="maq">Maqueta del panel del Evaluador cromático</h1>
+<p class="maq">Datos reales del panel-svg evaluado en protanopía. Colores idénticos a los tokens auditados de la versión 0.6.0. El selector Claro / Oscuro de cada cabecera funciona.</p>
+<div class="lienzo" id="lienzo"></div>
+
+<template id="tpl">
+<div class="panel">
+  <header class="cab">
+    <div class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="txt"><b>Evaluador cromático</b><small>Evaluada a las 10:16 · 2 ms</small></div>
+    <div class="tema" role="radiogroup" aria-label="Tema del panel"><button role="radio" data-t="claro">Claro</button><button role="radio" data-t="oscuro">Oscuro</button></div>
+  </header>
+
+  <div class="cuerpo">
+    <!-- 1. Simulacion: siempre abierta -->
+    <section class="bloque"><div class="in">
+      <div class="tit"><h2>Simulación</h2><span>Esta pestaña</span></div>
+      <div>
+        <label class="et" for="tipo">Tipo de deficiencia</label>
+        <select id="tipo"><option>Ninguna</option><option selected>Protanopía</option><option>Deuteranopía</option><option>Tritanopía</option></select>
+      </div>
+      <div>
+        <label class="et" for="sev">Severidad</label>
+        <div class="fila-sev"><input id="sev" type="range" min="0" max="1" step="0.1" value="1"><span class="mono">1,0</span></div>
+      </div>
+      <p class="ayuda">Se aplica solo a esta pestaña. Elige «Ninguna» para ver los colores originales.</p>
+      <button class="btn secu">Volver a evaluar</button>
+    </div></section>
+
+    <!-- 2. Resumen con la franja de la paleta -->
+    <section class="bloque">
+      <div class="in" style="padding-bottom:14px">
+        <div class="tit"><h2>Resumen</h2><span>11 series</span></div>
+        <div class="franja" aria-label="Series del dashboard en visión típica y bajo protanopía">
+          <div class="fila"><span>Visión típica</span><div class="banda" data-banda="orig"></div></div>
+          <div class="fila"><span>Protanopía</span><div class="banda" data-banda="sim"></div></div>
+        </div>
+      </div>
+      <div class="marcador">
+        <div class="dato"><span class="d">Contraste WCAG</span><span class="v mal">7<small>de 16</small></span><span class="e">pares incumplen</span></div>
+        <div class="dato"><span class="d">Distinguibilidad</span><span class="v mal">4<small>de 55</small></span><span class="e">pares confundibles</span></div>
+        <div class="dato"><span class="d">Extracción</span><span class="v">1</span><span class="e">nivel, DOM y SVG</span></div>
+        <div class="dato"><span class="d">Evaluación</span><span class="v">15</span><span class="e">colores, exacta</span></div>
+      </div>
+    </section>
+
+    <!-- 3. Paleta -->
+    <details class="bloque" open>
+      <summary><h2>Paleta detectada</h2><span>15 colores</span></summary>
+      <div class="in"><div class="tabla-pal" data-paleta>
+        <div class="cab-t"><span></span><span>Original</span><span>Protanopía</span></div>
+      </div></div>
+    </details>
+
+    <!-- 4. Contraste -->
+    <details class="bloque" open>
+      <summary><h2>Contraste</h2><span>7 incumplen</span></summary>
+      <div class="in">
+        <div class="grupo-c">
+          <h3>1.4.3 Texto <span>· umbral 4,5:1</span></h3>
+          <div class="rc"><div class="muestra-txt" style="color:#5A6572;background:#FFFFFF">Aa</div>
+            <div><span class="mono num">5,93<small>:1</small></span><span class="qd"><code>#5A6572</code> sobre <code>#FFFFFF</code> · 46 elementos</span></div><span class="p ok">Cumple</span></div>
+          <div class="rc"><div class="muestra-txt" style="color:#0B57D0;background:#FFFFFF">Aa</div>
+            <div><span class="mono num">6,39<small>:1</small></span><span class="qd"><code>#0B57D0</code> sobre <code>#FFFFFF</code> · 1 enlace</span></div><span class="p ok">Cumple</span></div>
+        </div>
+        <div class="grupo-c">
+          <h3>1.4.11 Objetos gráficos <span>· umbral 3:1</span></h3>
+          <div data-graficos></div>
+        </div>
+      </div>
+    </details>
+
+    <!-- 5. Distinguibilidad -->
+    <details class="bloque" open>
+      <summary><h2>Distinguibilidad</h2><span>4 pares bajo 10</span></summary>
+      <div class="in">
+        <div class="env-matriz"><table class="matriz" data-matriz></table></div>
+        <p class="leyenda-m">ΔE00 entre series simuladas. En <b>negrita sobre fondo rojizo</b>, los pares por debajo del umbral 10.</p>
+        <div class="pares" data-pares></div>
+      </div>
+    </details>
+
+    <!-- 6. Recomendacion -->
+    <section class="bloque"><div class="in">
+      <div class="tit"><h2>Recomendación</h2><span>Severidad máxima</span></div>
+      <div>
+        <label class="et" for="fam">Familia de la paleta</label>
+        <select id="fam"><option selected>Categórica (series independientes)</option><option>Secuencial (magnitud ordenada)</option></select>
+      </div>
+      <div class="series-res"><span>8 de 11 series consideradas</span><a href="#" onclick="return false">Revisar</a></div>
+      <div class="esquema"><b>Tol cualitativo de 12</b><span>Primer esquema acreditado para protanopía con capacidad suficiente que superó la revalidación.</span></div>
+      <div class="kpis"><div><b>3</b>esquemas probados</div><div><b>3</b>sustituciones</div><div><b class="mono">13,33</b>ΔE00 mínimo</div></div>
+      <div class="franja">
+        <div class="fila"><span>Original</span><div class="banda" data-banda="rec-o"></div></div>
+        <div class="fila"><span>Propuesta</span><div class="banda" data-banda="rec-p"></div></div>
+      </div>
+      <div class="map" data-map><div class="cab-t"><span>Original</span><span>Propuesta</span></div></div>
+      <div class="interruptor"><span>Previsualizar en la página</span><span class="sw" role="switch" aria-checked="true" tabindex="0"></span></div>
+    </div></section>
+
+    <div class="pie"><button class="btn secu">Exportar reporte</button><button class="btn texto">Limpiar todo</button></div>
+  </div>
+</div>
+</template>
+
+<script>
+const orig=["#4E79A7","#FFFFFF","#000000","#F28E2B","#E15759","#EDC948","#C9CFD6","#76B7B2","#59A14F","#A8CFCB","#2C7873"];
+const sim =["#667BA9","#FFFFFF","#000000","#AC9918","#7A7358","#DEC636","#CDCFD6","#B0B1B2","#A59548","#CBCBCB","#717273"];
+const paleta=[["#5A6572","#606573","texto · 36,8 %"],["#4E79A7","#667BA9","serie · 11,2 %"],["#FFFFFF","#FFFFFF","fondo · 8,8 %"],
+ ["#000000","#000000","serie · 6,4 %"],["#F28E2B","#AC9918","serie · 6,4 %"],["#E15759","#7A7358","serie · 6,4 %"],["#EDC948","#DEC636","serie · 6,4 %"],
+ ["#C9CFD6","#CDCFD6","eje · 4,8 %"],["#21262B","#24262B","texto · 4,0 %"],["#E3E6EA","#E5E6EA","borde · 3,2 %"],["#76B7B2","#B0B1B2","serie · 1,6 %"],
+ ["#59A14F","#A59548","serie · 1,6 %"],["#A8CFCB","#CBCBCB","serie · 0,8 %"],["#2C7873","#717273","serie · 0,8 %"],["#0B57D0","#0068D4","texto · 0,8 %"]];
+const graf=[["#FFFFFF","1,00","6 separadores",0],["#E3E6EA","1,25","4 bordes de tarjeta",0],["#C9CFD6","1,57","6 ejes",0],["#EDC948","1,61","6 series",0],
+ ["#A8CFCB","1,69","1 área",0],["#76B7B2","2,29","1 serie",0],["#F28E2B","2,42","6 series",0],["#59A14F","3,16","1 serie",1],["#E15759","3,68","6 series",1],["#4E79A7","4,55","12 series",1]];
+const M=[[],[38.9],[41.7,100],[48.4,36.2,56.1],[31.3,39.8,37.0,21.7],[53.7,30.1,75.1,12.8,32.0],[28.7,11.0,74.9,34.0,32.5,31.8],
+ [24.0,18.1,60.2,27.9,24.3,28.7,8.4],[43.4,34.1,52.8,6.2,16.9,16.0,30.8,24.1],[29.6,11.4,72.7,29.6,29.8,27.3,3.7,6.8,26.5],[16.7,38.4,34.7,30.5,12.7,38.7,28.9,21.2,26.1,27.8]];
+const pares=[["#C9CFD6","#A8CFCB",3.65,13.44,"solo bajo simulación"],["#F28E2B","#59A14F",6.16,44.59,"solo bajo simulación"],
+ ["#76B7B2","#A8CFCB",6.85,9.17,"también en visión típica"],["#C9CFD6","#76B7B2",8.36,20.13,"solo bajo simulación"]];
+const recO=["#4E79A7","#F28E2B","#E15759","#EDC948","#76B7B2","#59A14F","#A8CFCB","#2C7873"];
+const recP=["#6699CC","#AA4466","#CC6677","#661100","#332288","#999933","#AA4499","#117733"];
+const f=n=>n.toFixed(1).replace(".",",");
+const f2=n=>n.toFixed(2).replace(".",",");
+
+function montar(p){
+  const b=(sel,arr)=>{p.querySelector(`[data-banda="${sel}"]`).innerHTML=arr.map(c=>`<i style="background:${c}"></i>`).join("")};
+  b("orig",orig);b("sim",sim);b("rec-o",recO);b("rec-p",recP);
+  p.querySelector("[data-paleta]").insertAdjacentHTML("beforeend",paleta.map(([o,s,r])=>
+    `<div class="r"><span class="par"><i style="background:${o}"></i><i style="background:${s}"></i></span>
+     <span><span class="mono hex">${o}</span><span class="rol">${r}</span></span><span class="mono hex">${s}</span></div>`).join(""));
+  p.querySelector("[data-graficos]").innerHTML=graf.map(([c,r,q,ok])=>
+    `<div class="rc"><div class="muestra-obj" style="background:#FFFFFF"><i style="background:${c};outline:${c=="#FFFFFF"?"1px dashed #9aa4b1":"none"}"></i></div>
+     <div><span class="mono num">${r}<small>:1</small></span><span class="qd"><code>${c}</code> sobre <code>#FFFFFF</code> · ${q}</span></div>
+     <span class="p ${ok?"ok":"ko"}">${ok?"Cumple":"Incumple"}</span></div>`).join("");
+  let t=`<thead><tr><th></th>${orig.slice(0,10).map((c,i)=>`<th><span class="m" style="background:${c}" title="${c}"></span></th>`).join("")}</tr></thead><tbody>`;
+  for(let i=1;i<11;i++){
+    t+=`<tr><th class="fila"><span class="m" style="background:${orig[i]}"></span> ${i+1}</th>`;
+    for(let j=0;j<10;j++){
+      if(j<i){const v=M[i][j],x=v<10;t+=`<td class="${x?"x":"v"}">${f(v)}${x?'<span class="solo-lector"> confundible</span>':""}</td>`}
+      else t+=`<td style="background:transparent"></td>`;
+    }
+    t+="</tr>";
+  }
+  p.querySelector("[data-matriz]").innerHTML=t+"</tbody>";
+  const pos=v=>Math.min(v,50)/50*100;
+  p.querySelector("[data-pares]").innerHTML=pares.map(([a,b2,s,tp,nota])=>
+    `<div class="parc"><div class="top"><span class="m" style="background:${a}"></span><span class="mono hx">${a}</span>
+      <span class="m" style="background:${b2}"></span><span class="mono hx">${b2}</span><span class="p ko">Confundible</span></div>
+     <div class="escala" aria-hidden="true"><div class="pista"></div><div class="zona" style="width:20%"></div><div class="umbral" style="left:20%"></div>
+      <div class="tip" style="left:${pos(tp)}%"></div><div class="sim" style="left:${pos(s)}%"></div></div>
+     <div class="cifras"><span>Simulado <b class="mono">${f2(s)}</b> · típico <b class="mono">${f2(tp)}</b></span><span>${nota}</span></div></div>`).join("")+
+    `<p class="leyenda-m">Escala de 0 a 50. Punto lleno: simulado. Círculo: visión típica. Zona rojiza: por debajo del umbral 10.</p>`;
+  p.querySelector("[data-map]").insertAdjacentHTML("beforeend",recO.map((c,i)=>
+    `<div class="r"><div><span class="m" style="background:${c}"></span><span class="mono">${c}</span></div>
+     <div><span class="m" style="background:${recP[i]}"></span><span class="mono">${recP[i]}</span></div></div>`).join(""));
+}
+const L=document.getElementById("lienzo"),T=document.getElementById("tpl");
+[["","Arranca en claro · 380 px"],["oscuro","Arranca en oscuro · 380 px"]].forEach(([cls,cap])=>{
+  const fig=document.createElement("figure");fig.className="marco";fig.style.margin="0";
+  const n=T.content.cloneNode(true);const p=n.querySelector(".panel");if(cls)p.classList.add(cls);
+  p.querySelectorAll("[id]").forEach(e=>{e.id+=cls||"c"});p.querySelectorAll("label[for]").forEach(e=>{e.htmlFor+=cls||"c"});
+  montar(p);
+  const sync=()=>p.querySelectorAll('.tema button').forEach(x=>x.setAttribute('aria-checked',String((x.dataset.t==='oscuro')===p.classList.contains('oscuro'))));
+  p.querySelectorAll('.tema button').forEach(x=>x.addEventListener('click',()=>{p.classList.toggle('oscuro',x.dataset.t==='oscuro');sync()}));sync();
+  fig.appendChild(n);fig.insertAdjacentHTML("beforeend",`<figcaption>${cap}</figcaption>`);L.appendChild(fig);
+});
+</script>
+</body>
+</html>

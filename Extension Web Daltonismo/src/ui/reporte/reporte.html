@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reporte cromático</title>
+  <!-- Los estilos del reporte los inyecta reporte.js desde plantilla.js
+       (una sola fuente para la página y para el documento exportable). -->
+  <style id="estilos-reporte"></style>
+  <style>
+    /* Barra solo en pantalla: instrucción para guardar y botón para
+       volver a abrir el diálogo. Oculta al imprimir. */
+    .barra-pantalla {
+      max-width: 880px;
+      margin: 16px auto 0;
+      padding: 0 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 16px;
+      font-family: var(--fuente-ui);
+      font-size: 0.875rem;
+      color: var(--texto);
+    }
+    .barra-pantalla p { margin: 0; }
+    .barra-pantalla button {
+      font: inherit;
+      font-weight: 600;
+      min-height: 36px;
+      padding: 8px 14px;
+      border-radius: 4px;
+      border: 1px solid var(--borde);
+      background: var(--superficie);
+      color: var(--acento);
+      cursor: pointer;
+    }
+    .barra-pantalla button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+    .barra-pantalla .error { color: var(--error); font-weight: 600; }
+    @media (max-width: 640px) { .barra-pantalla { margin-top: 12px; } }
+    @media print { .barra-pantalla { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="barra-pantalla">
+    <p id="instruccion">Para guardar el PDF, elige «Guardar como PDF» como destino en el diálogo de impresión.</p>
+    <button type="button" id="reimprimir">Volver a abrir el diálogo de impresión</button>
+  </div>
+  <article class="hoja" id="reporte" aria-live="polite"></article>
+  <script type="module" src="reporte.js"></script>
+</body>
+</html>
