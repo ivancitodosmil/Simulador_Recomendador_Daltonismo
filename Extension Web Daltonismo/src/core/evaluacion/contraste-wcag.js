@@ -1,9 +1,10 @@
 // ------------------------------------------------------------------
-// Sprint 3 · Evaluación WCAG 2.1 sobre los colores DECLARADOS (no
-// simulados), usando las observaciones color-elemento del nivel 1 de
-// extracción:
+// Evaluación WCAG 2.1 sobre los colores declarados, no simulados (RF04),
+// con las observaciones color-elemento del nivel 1 de extracción:
 //   - 1.4.3 texto sobre fondo: 4.5:1 normal, 3:1 texto grande.
 //   - 1.4.11 objetos gráficos contra su fondo efectivo: 3:1.
+// Sprint 3.
+//
 // Cada objeto gráfico (fill/stroke de serie, borde) se compara contra
 // el fondo efectivo de su propio elemento: el primer ancestro con
 // background-color opaco, componiendo las capas semitransparentes
@@ -133,8 +134,8 @@ export function evaluateWcagContrast(observations, { doc = document } = {}) {
         passes: meetsThreshold(ratio, threshold), // sin redondeo previo
         count: 0,
         examples: [],
-        // Roles de las observaciones que aportan al par (sprint 5, bloque 2):
-        // permiten distinguir un fallo de serie de uno de borde decorativo.
+        // Roles de las observaciones que aportan al par: permiten distinguir
+        // un fallo de serie de uno de borde decorativo.
         roles: []
       };
       groups.set(key, group);

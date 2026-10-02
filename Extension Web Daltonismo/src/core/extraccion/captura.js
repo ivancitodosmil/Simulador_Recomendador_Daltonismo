@@ -1,9 +1,9 @@
 // ------------------------------------------------------------------
-// Sprint 1 · Nivel 3 de extracción (respaldo): captura de la pestaña
-// visible con chrome.tabs.captureVisibleTab, procesada con el mismo
-// muestreo y corte mediano de canvas.js. Se ejecuta en el service
-// worker (usa OffscreenCanvas, no DOM). Su resultado se marca como
-// aproximado porque pierde la relación entre color y elemento.
+// Nivel 3 de extracción, respaldo (RF01): captura de la pestaña visible
+// con chrome.tabs.captureVisibleTab, procesada con el mismo muestreo y
+// corte mediano de canvas.js. Se ejecuta en el service worker (usa
+// OffscreenCanvas, no DOM). Su resultado se marca como aproximado
+// porque pierde la relación entre color y elemento. Sprint 1.
 // ------------------------------------------------------------------
 
 import { samplePixels, medianCutQuantize, discardRareTones } from "./canvas.js";

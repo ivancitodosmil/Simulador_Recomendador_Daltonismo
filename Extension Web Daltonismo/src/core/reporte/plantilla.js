@@ -1,19 +1,20 @@
 // ------------------------------------------------------------------
-// HU08 / RF08 · Plantilla del reporte (iteración 0.6.5): reproduce la
-// maqueta Pruebas/Docs/maqueta-reporte.html con los datos reales de la
-// evaluación. Concepto de la maqueta: informe de laboratorio; portada
-// con la paleta del dashboard como protagonista, cuerpo sobrio.
+// Plantilla del reporte (RF08): reproduce la maqueta
+// Pruebas/Docs/maqueta-reporte.html con los datos reales de la
+// evaluación. Concepto de la maqueta: informe de laboratorio, portada
+// con la paleta del dashboard como protagonista y cuerpo sobrio.
+// Sprint 5; rediseñada en la versión 0.6.5.
 //
-// Exporta tres piezas que usa la página propia del reporte
-// (src/ui/reporte/) y, para pruebas y compatibilidad, el documento
-// completo autocontenido:
+// Exporta las piezas que usa la página propia del reporte
+// (src/ui/reporte/):
 //   REPORT_STYLES        hoja de estilos (pantalla + impresión A4)
 //   renderReportBody     HTML del artículo <article class="hoja">
 //   reportTitle          «Reporte cromático · nombre o dominio · fecha»
-//   renderReportHtml     documento completo (estilos + cuerpo)
+// y renderReportHtml, el documento completo autocontenido, que la
+// extensión no usa y conservan los arneses de prueba.
 //
 // El bloque :root es una copia literal del tema claro de
-// src/ui/estilos/tokens.css (el reporte SIEMPRE va en claro); la
+// src/ui/estilos/tokens.css (el reporte siempre va en claro); la
 // auditoría de tokens verifica que no diverja. Sin iconos ni glifos,
 // sin barras laterales de color, sin sombras, sin mayúsculas espaciadas;
 // los veredictos son pastillas con la palabra (con borde al imprimir) y
@@ -608,7 +609,7 @@ export const REPORT_STYLES =
 "  .pie { break-inside: avoid; }\n" +
 "}\n";
 
-/** Documento HTML completo y autocontenido (pruebas y compatibilidad). */
+/** Documento HTML completo y autocontenido; lo usan los arneses de prueba, no la extensión. */
 export function renderReportHtml(data) {
   return "<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n" +
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n" +

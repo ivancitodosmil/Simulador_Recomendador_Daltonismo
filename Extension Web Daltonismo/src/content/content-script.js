@@ -1,11 +1,10 @@
 // ------------------------------------------------------------------
-// Sprints 1-2 · Content script. No está declarado en el manifest: el
-// service worker lo inyecta bajo demanda con chrome.scripting. Por eso
-// es un script clásico que carga los módulos ES del núcleo con import()
-// dinámico (los módulos están en web_accessible_resources).
-// Sprint 1: niveles 1 (DOM/SVG) y 2 (canvas) de extracción.
-// Sprint 2: aplica y retira el filtro SVG de simulación sobre el
-// contenedor del dashboard.
+// Content script. No va en el manifest: el service worker lo inyecta
+// bajo demanda con chrome.scripting, por eso es un script clásico que
+// carga los módulos ES del núcleo (web_accessible_resources) con
+// import() dinámico. Extrae la paleta (RF01), evalúa el contraste con
+// los elementos vivos (RF04), aplica el filtro de simulación (RF02,
+// RF03) y la previsualización de la propuesta (RF07). Sprints 1 a 4.
 // ------------------------------------------------------------------
 
 (() => {
@@ -22,7 +21,7 @@
   let cachedContainer = null;
 
   // Observaciones color-elemento de la última extracción: la evaluación de
-  // contraste (sprint 3) las necesita con sus referencias vivas.
+  // contraste las necesita con sus referencias vivas.
   let lastObservations = [];
 
   /** Carga perezosa (y única) de los módulos de extracción. */
@@ -45,7 +44,7 @@
     return filterModulePromise;
   }
 
-  /** Carga perezosa del módulo de evaluación WCAG (sprint 3). */
+  /** Carga perezosa del módulo de evaluación WCAG. */
   function loadWcagModule() {
     if (!wcagModulePromise) {
       wcagModulePromise = import(chrome.runtime.getURL("src/core/evaluacion/contraste-wcag.js"));
@@ -66,8 +65,8 @@
   }
 
   // ------------------------------------------------------------------
-  // Previsualización de la paleta propuesta (sprint 4, RF07).
-  // MECANISMO: sustitución por ESTILOS EN LÍNEA sobre los elementos del
+  // Previsualización de la paleta propuesta (RF07).
+  // Mecanismo: sustitución por estilos en línea sobre los elementos del
   // registro color-elemento de la extracción. El estilo en línea gana a
   // los atributos SVG y a las reglas CSS (incluidas las variables), y
   // al desactivar se restaura el valor en línea previo exacto de cada
@@ -75,7 +74,7 @@
   // las propiedades fill, stroke, background-color y color cuyo valor
   // computado coincide con el color original (ΔE00 < 2.5, el mismo
   // umbral de agrupación de la consolidación).
-  // CASO CANVAS (exclusión documentada): los colores muestreados de un
+  // Caso canvas (exclusión documentada): los colores muestreados de un
   // canvas no tienen elementos en el registro, así que no pueden
   // recolorearse sin redibujar el gráfico, cosa que solo puede hacer la
   // librería que lo pintó. Esos colores se cuentan y se informan como
@@ -118,8 +117,8 @@
             property,
             previousValue: element.style.getPropertyValue(property),
             previousPriority: element.style.getPropertyPriority(property),
-            // Restauracion exacta: si el elemento no tenia atributo style,
-            // al limpiar se retira tambien el atributo vacio que queda.
+            // Restauración exacta: si el elemento no tenía atributo style,
+            // al limpiar se retira también el atributo vacío que queda.
             hadStyleAttribute: element.hasAttribute("style")
           });
           element.style.setProperty(property, entry.toHex);
@@ -146,7 +145,7 @@
         // El elemento desapareció del documento: no hay nada que restaurar.
       }
     }
-    // Segunda pasada: elimina los atributos style vacios que este modulo creo.
+    // Segunda pasada: elimina los atributos style vacíos que este módulo creó.
     for (const change of previewChanges) {
       try {
         if (!change.hadStyleAttribute && change.element.getAttribute("style") === "") {
@@ -160,7 +159,7 @@
     return { ok: true, restored };
   }
 
-  /** Ejecuta la extracción completa dentro de la página (sprint 1). */
+  /** Ejecuta la extracción completa dentro de la página (niveles 1 y 2). */
   async function extractPalette() {
     const startTime = performance.now();
     const { domSvg, canvasModule, consolidation } = await loadExtractionModules();
@@ -181,8 +180,8 @@
       canvasResult.entries
     );
 
-    // El registro hex → elementos se queda en la página para los sprints de
-    // simulación y recomendación (no es serializable en el mensaje).
+    // El registro hex → elementos se queda en la página para la
+    // previsualización (no es serializable en el mensaje).
     globalThis.__dashboardColorRegistry = registry;
 
     const levels = [];
@@ -209,9 +208,9 @@
   }
 
   /**
-   * Evaluación completa (sprint 3): extracción + contraste WCAG sobre los
-   * colores declarados, con las relaciones color-elemento aún vivas.
-   * La distinguibilidad la calcula el service worker con la paleta simulada.
+   * Evaluación completa: extracción + contraste WCAG sobre los colores
+   * declarados, con las relaciones color-elemento aún vivas. La
+   * distinguibilidad la calcula el service worker con la paleta simulada.
    */
   async function runFullEvaluation() {
     const extraction = await extractPalette();
@@ -225,14 +224,14 @@
     return { ...extraction, contrast };
   }
 
-  /** Aplica el filtro de simulación sobre el contenedor (sprint 2). */
+  /** Aplica el filtro de simulación sobre el contenedor. */
   async function applySimulation(config) {
     const filterModule = await loadFilterModule();
     filterModule.applySimulationFilter(config, cachedContainer);
     return { ok: true };
   }
 
-  /** Retira el filtro y restaura la página (sprint 2). */
+  /** Retira el filtro y restaura la página. */
   async function clearSimulation() {
     const filterModule = await loadFilterModule();
     filterModule.clearSimulationFilter();
@@ -240,14 +239,10 @@
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message && message.type === "PING") {
-      sendResponse({ ok: true });
-      return false;
-    }
     if (message && message.type === "GET_PAGE_STATE") {
-      // Reconciliación (sprint 5, bloque 3): el panel pregunta qué tiene
-      // la página DE VERDAD. Si el módulo del filtro nunca se cargó, no
-      // puede haber filtro (solo este módulo lo aplica).
+      // Reconciliación: el panel pregunta qué tiene la página realmente.
+      // Si el módulo del filtro nunca se cargó, no puede haber filtro
+      // (solo este módulo lo aplica).
       (async () => {
         let filter = { active: false, config: null };
         if (filterModulePromise) {
@@ -263,12 +258,6 @@
         .then(sendResponse)
         .catch(() => sendResponse({ ok: true, filter: { active: false, config: null }, previewActive: false }));
       return true;
-    }
-    if (message && message.type === "EXTRACT_PALETTE") {
-      extractPalette()
-        .then(sendResponse)
-        .catch((error) => sendResponse({ ok: false, error: "extraction-failed", detail: String(error) }));
-      return true; // respuesta asíncrona
     }
     if (message && message.type === "RUN_EVALUATION") {
       runFullEvaluation()

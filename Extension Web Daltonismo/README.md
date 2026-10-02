@@ -23,16 +23,32 @@ Prototipo desarrollado como trabajo de titulación.
 
 ## Estructura
 
-- `src/core/` — módulos de cálculo (color, extracción, simulación,
-  evaluación, recomendación, reporte), sin dependencias externas.
-- `src/ui/` — panel lateral y estilos (tokens + componentes).
+- `manifest.json` — Manifest V3: panel lateral, service worker, permisos
+  y módulos accesibles desde la página.
+- `src/core/` — módulos de cálculo sin dependencias externas:
+  `color/` (conversión, contraste WCAG, CIEDE2000), `extraccion/`
+  (niveles DOM/SVG, canvas y captura, consolidación), `simulacion/`
+  (Machado, Brettel, filtro SVG en vivo), `evaluacion/` (contraste y
+  distinguibilidad), `recomendacion/` (catálogo y algoritmo) y
+  `reporte/` (datos y plantilla del reporte).
+- `src/ui/panel/` — panel lateral: `panel.html`, `panel.js` y `tema.js`
+  (tema aplicado antes del primer pintado).
+- `src/ui/reporte/` — página del reporte que se exporta a PDF con el
+  diálogo de impresión del navegador.
+- `src/ui/estilos/` — `tokens.css` (identidad visual, temas claro y
+  oscuro) y `componentes.css` (componentes del panel).
 - `src/background/` y `src/content/` — service worker y content script.
-- `herramientas/` — utilidades de desarrollo (auditoría de tokens y
-  empaquetado); no forman parte del paquete.
+- `assets/iconos/` — icono de la extensión.
+- `herramientas/` — utilidades de desarrollo (auditoría de tokens,
+  empaquetado y rastreo de la interfaz); no forman parte del paquete.
+- `../Pruebas/` — banco de pruebas con seis paneles de ejemplo y, en
+  `Pruebas/Docs/`, las dos maquetas de diseño vigentes
+  (`maqueta-panel.html` y `maqueta-reporte.html`); fuera del paquete.
 
 ## Herramientas de desarrollo
 
 ```
 node herramientas/auditoria-tokens.mjs   # auditoría de contraste y CVD de los tokens
+node herramientas/rastreo-ui.mjs         # rastreo estático de las reglas visuales de la interfaz
 node herramientas/empaquetar.mjs         # genera el ZIP para la Chrome Web Store
 ```

@@ -1,23 +1,23 @@
 // ------------------------------------------------------------------
-// Sprint 4 · Algoritmo de recomendación de paleta, conforme a la
-// sección 3.5.4 de la tesis: salida temprana + cuatro pasos.
+// Algoritmo de recomendación de paleta (RF06), conforme a la sección
+// 3.5.4 de la tesis: salida temprana + cuatro pasos. Sprint 4.
 //
 // - Salida temprana: si la paleta original supera el contraste (los
-//   pares 1.4.11 realmente evaluados por el Sprint 3, que el llamador
-//   entrega como recuento de fallos) y la distinguibilidad bajo la
-//   simulación a severidad máxima, se informa el cumplimiento y no se
-//   propone reemplazo.
+//   pares 1.4.11 realmente evaluados, que el llamador entrega como
+//   recuento de fallos) y la distinguibilidad bajo la simulación a
+//   severidad máxima, se informa el cumplimiento y no se propone
+//   reemplazo.
 // - Paso 1: la familia la indica el usuario; aquí llega como parámetro.
 // - Paso 2: filtra los esquemas acreditados para el tipo de deficiencia
 //   y con capacidad suficiente; si ninguno alcanza, devuelve el aviso
 //   de rediseño con la razón concreta (series frente a capacidad).
 // - Paso 3: asignación inyectiva por cercanía CIEDE2000 sobre los
-//   colores ORIGINALES (cualitativas); en las secuenciales se preserva
+//   colores originales (cualitativas); en las secuenciales se preserva
 //   el orden de la escala por claridad (L de CIELAB), sin
 //   emparejamiento uno a uno.
-// - Paso 4: revalidación con la simulación SIEMPRE a severidad máxima
-//   (la propuesta es estable aunque el usuario explore severidades
-//   menores). Si falla, sustituye el color conflictivo por otro libre
+// - Paso 4: revalidación con la simulación siempre a severidad máxima,
+//   de modo que la propuesta sea estable aunque el usuario explore
+//   severidades menores. Si falla, sustituye el color conflictivo por otro libre
 //   del mismo esquema (solo cualitativas: en una secuencial la
 //   sustitución rompería el orden de la escala, así que se pasa al
 //   siguiente esquema) o continúa con el siguiente candidato.
@@ -31,7 +31,7 @@
 
 import { PALETTE_CATALOG } from "./catalogo.js";
 import { ciede2000 } from "../color/diferencia.js";
-import { hexToRgb, rgbToHex, rgbToLab } from "../color/conversion.js";
+import { hexToRgb, rgbToLab } from "../color/conversion.js";
 import { contrastRatio, meetsThreshold, WCAG_THRESHOLDS } from "../color/contraste.js";
 import {
   computeDistinguishability,
@@ -55,7 +55,7 @@ function minOffDiagonal(matrix) {
 
 /**
  * Paso 3 (cualitativas): asignación inyectiva por cercanía perceptual.
- * Se ordenan TODOS los pares (serie, color de esquema) por ΔE00 sobre los
+ * Se ordenan todos los pares (serie, color de esquema) por ΔE00 sobre los
  * originales y se asignan en orden voraz saltando series y colores ya
  * usados: dos conjuntos (usedSeries / usedScheme) garantizan que ningún
  * color del esquema se entregue dos veces.
@@ -189,8 +189,8 @@ function revalidate(assignment, schemeRgbs, backgroundRgb, config, threshold, al
  *   deficiencyType: "protanopia" | "deuteranopia" | "tritanopia"
  *   family: "qualitative" | "sequential" (paso 1: lo indica el usuario)
  *   threshold: umbral de confusión ΔE00
- *   originalGraphicsFailures: fallos 1.4.11 de la evaluación real del
- *     Sprint 3 (los pares con elemento; una paleta con series solo en
+ *   originalGraphicsFailures: fallos 1.4.11 de la evaluación de contraste
+ *     real (los pares con elemento; una paleta con series solo en
  *     canvas no tiene pares y llega con 0)
  * Devuelve un objeto con outcome: "compliant" | "proposal" | "redesign"
  * (más los informativos "no-deficiency" e "insufficient-series").
@@ -210,7 +210,7 @@ export function recommendPalette({
     return { outcome: "insufficient-series" };
   }
 
-  // Severidad SIEMPRE máxima: dos corridas dan la misma propuesta aunque
+  // Severidad siempre máxima: dos corridas dan la misma propuesta aunque
   // el usuario esté explorando una severidad menor.
   const config = { type: deficiencyType, severity: 1 };
 
@@ -245,7 +245,7 @@ export function recommendPalette({
   // ---- Pasos 3 y 4 por candidato, en orden de catálogo ----
   const attempts = [];
   for (const scheme of candidates) {
-    // En secuenciales solo se usa el TRAMO de la rampa que supera 3:1
+    // En secuenciales solo se usa el tramo de la rampa que supera 3:1
     // sobre el fondo dominante: el extremo claro de viridis, cividis o
     // la escala monocroma nunca cumpliría sobre un fondo blanco. El
     // orden de la escala se preserva dentro del tramo. Si el tramo no

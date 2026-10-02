@@ -1,15 +1,10 @@
 // ------------------------------------------------------------------
-// Service worker (módulo ES). Orquesta el flujo panel → service
-// worker → content script:
-//   Sprint 1: extracción de la paleta con respaldo de captura.
-//   Sprint 2: aplicar/retirar la simulación en vivo.
-//   Sprint 3: evaluación completa (extracción + contraste WCAG en la
-//   página + distinguibilidad con la paleta simulada), resultado
-//   persistido en chrome.storage.session para el panel lateral, e
-//   insignia numérica en el icono con los pares que incumplen.
-//   Iteración 0.6.0 (frente 2): panel lateral POR PESTAÑA. El panel
-//   queda deshabilitado globalmente y el clic en el icono lo habilita
-//   y lo abre solo para la pestaña pulsada, dentro del mismo gesto.
+// Service worker (módulo ES). Orquesta el flujo panel → service worker
+// → content script: habilita el panel lateral por pestaña, inyecta el
+// content script bajo demanda, completa la extracción con la captura
+// (RF01), reenvía simulación y previsualización (RF02, RF03, RF07) y
+// calcula la distinguibilidad de la paleta simulada (RF05).
+// Sprints 1 a 3; panel por pestaña desde la versión 0.6.0.
 // ------------------------------------------------------------------
 
 import { extractFromCapture } from "../core/extraccion/captura.js";
@@ -34,10 +29,10 @@ const MAX_SERIES_COLORS = 20;
 const PANEL_PATH = "src/ui/panel/panel.html";
 
 // ------------------------------------------------------------------
-// Panel lateral por pestaña (frente 2). El manifest declara la ruta,
-// pero el panel nace deshabilitado para TODAS las pestañas; el clic en
-// el icono lo habilita y lo abre solo para la pestaña pulsada. No hay
-// popup: action.onClicked no se dispara si hay default_popup declarado.
+// Panel lateral por pestaña. El manifest declara la ruta, pero el panel
+// nace deshabilitado para todas las pestañas; el clic en el icono lo
+// habilita y lo abre solo para la pestaña pulsada. No hay popup:
+// action.onClicked no se dispara si hay default_popup declarado.
 // ------------------------------------------------------------------
 
 /** Deshabilita el panel como opción global (estado de partida). */
@@ -48,13 +43,16 @@ function disablePanelGlobally() {
 chrome.runtime.onInstalled.addListener(disablePanelGlobally);
 chrome.runtime.onStartup.addListener(disablePanelGlobally);
 
-chrome.action.onClicked.addListener(async (tab) => {
+chrome.action.onClicked.addListener((tab) => {
   if (!tab || !tab.id) return;
   try {
-    // Habilitar y abrir DENTRO del mismo gesto del clic: sidePanel.open
-    // exige un gesto de usuario y aquí lo es.
-    await chrome.sidePanel.setOptions({ tabId: tab.id, path: PANEL_PATH, enabled: true });
-    await chrome.sidePanel.open({ tabId: tab.id });
+    // Habilitar y abrir dentro del mismo gesto del clic, sin await entre
+    // ambas llamadas: sidePanel.open exige un gesto de usuario y esperar
+    // a setOptions lo consumía cuando el service worker arrancaba en frío
+    // (el primer clic tras recargar no abría). El navegador procesa las
+    // dos llamadas en orden, así que el panel ya está habilitado al abrir.
+    chrome.sidePanel.setOptions({ tabId: tab.id, path: PANEL_PATH, enabled: true }).catch(() => {});
+    chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
   } catch (error) {
     // Sin sidePanel disponible no hay superficie alternativa: se ignora.
   }
@@ -71,9 +69,10 @@ function isRestrictedUrl(url) {
 }
 
 /**
- * Resuelve la pestaña sobre la que actuar. Los mensajes del panel
- * traen su tabId (cada panel está ligado a SU pestaña); sin él se usa
- * la pestaña activa de la última ventana enfocada, como antes.
+ * Resuelve la pestaña sobre la que actuar. Los mensajes del panel traen
+ * su tabId (cada panel está ligado a su pestaña); sin él se usa la
+ * pestaña activa de la ventana enfocada. Devuelve { tab } o { error }
+ * con la respuesta de error ya construida.
  */
 async function resolveTab(message) {
   let tab = null;
@@ -147,7 +146,7 @@ async function extendWithCapture(response, tab) {
   return response;
 }
 
-/** Simulación de la pestaña (sim:<tabId>, frente 2); sin ella, ninguna. */
+/** Simulación guardada para la pestaña (sim:<tabId>); sin ella, ninguna. */
 async function loadSimulationConfig(tabId) {
   try {
     const stored = await chrome.storage.session.get("sim:" + tabId);
@@ -161,24 +160,12 @@ async function loadSimulationConfig(tabId) {
   }
 }
 
-/** Flujo de extracción del sprint 1 (lo sigue usando EXTRACT_PALETTE). */
-async function handleExtraction(message) {
-  const { tab, error } = await resolveTab(message);
-  if (error) return error;
-  let response;
-  try {
-    response = await forwardToContent(tab.id, { type: "EXTRACT_PALETTE" });
-  } catch (injectionError) {
-    return injectionFailure(tab, injectionError);
-  }
-  return extendWithCapture(response, tab);
-}
-
 /**
- * Evaluación completa del sprint 3: extracción + contraste (en la página,
- * colores declarados) + distinguibilidad (aquí, paleta simulada con la
- * configuración de la pestaña y el método exacto del sprint 2).
- * El resultado se guarda por pestaña para que lo lea el panel lateral.
+ * Evaluación completa: extracción (RF01) + contraste WCAG calculado en
+ * la página sobre los colores declarados (RF04) + distinguibilidad
+ * calculada aquí con la paleta simulada según la configuración de la
+ * pestaña (RF05). Devuelve la carga completa y la guarda por pestaña
+ * para que la lea el panel lateral.
  */
 async function handleFullEvaluation(message) {
   const { tab, error } = await resolveTab(message);
@@ -194,7 +181,7 @@ async function handleFullEvaluation(message) {
   response = await extendWithCapture(response, tab);
 
   // Distinguibilidad sobre los colores de serie, simulados con la
-  // configuración de ESTA pestaña. Se calcula también la matriz de los
+  // configuración de esta pestaña. Se calcula también la matriz de los
   // colores originales para poder distinguir "confundible solo bajo
   // simulación" de "confundible siempre".
   const simulationConfig = await loadSimulationConfig(tab.id);
@@ -230,7 +217,7 @@ async function handleFullEvaluation(message) {
 
   const payload = {
     ...response,
-    // Dirección y título del dashboard evaluado, para el reporte (HU08).
+    // Dirección y título del dashboard evaluado, para el reporte (RF08).
     url: tab.url || "",
     title: tab.title || "",
     approximate: response.approximate === true,
@@ -242,7 +229,7 @@ async function handleFullEvaluation(message) {
   return payload;
 }
 
-/** Reenvía al content script las órdenes de simulación del sprint 2. */
+/** Reenvía al content script las órdenes de simulación y previsualización. */
 async function handleSimulationMessage(message) {
   const { tab, error } = await resolveTab(message);
   if (error) return error;
@@ -255,9 +242,9 @@ async function handleSimulationMessage(message) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.type === "GET_PAGE_STATE") {
-    // Consulta de estado SIN inyeccion de respaldo: si el content script
-    // no existe (pagina recargada o nunca evaluada), la pagina no puede
-    // tener estilos inyectados y se responde el estado vacio.
+    // Consulta de estado sin inyección de respaldo: si el content script
+    // no existe (página recargada o nunca evaluada), la página no puede
+    // tener estilos inyectados y se responde el estado vacío.
     (async () => {
       const { tab, error } = await resolveTab(message);
       if (error) return { ok: true, filter: { active: false, config: null }, previewActive: false, unreachable: true };
@@ -270,12 +257,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(sendResponse)
       .catch(() => sendResponse({ ok: true, filter: { active: false, config: null }, previewActive: false }));
     return true;
-  }
-  if (message && message.type === "EXTRACT_PALETTE") {
-    handleExtraction(message)
-      .then(sendResponse)
-      .catch((error) => sendResponse({ ok: false, error: "unexpected", detail: String(error) }));
-    return true; // respuesta asíncrona
   }
   if (message && message.type === "RUN_EVALUATION") {
     handleFullEvaluation(message)
@@ -304,7 +285,7 @@ chrome.tabs.onActivated.addListener(({ tabId }) => {
 });
 
 // …y al recargar o navegar, junto con la evaluación, la simulación y el
-// estado de interfaz guardados de esa pestaña. El PANEL sigue habilitado
+// estado de interfaz guardados de esa pestaña. El panel sigue habilitado
 // para la pestaña (opción por pestaña intacta): navegar no lo cierra,
 // solo descarta lo evaluado, porque la página nueva ya no lo es.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
@@ -316,7 +297,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   }
 });
 
-// Al cerrar la pestaña se descarta TODO su estado guardado (frente 2);
+// Al cerrar la pestaña se descarta todo su estado guardado;
 // la opción del panel de esa pestaña muere con ella.
 chrome.tabs.onRemoved.addListener((tabId) => {
   chrome.storage.session

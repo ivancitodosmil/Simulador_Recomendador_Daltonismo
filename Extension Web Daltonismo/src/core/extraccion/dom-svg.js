@@ -1,10 +1,10 @@
 // ------------------------------------------------------------------
-// Sprint 1 · Nivel 1 de extracción: colores declarados en el DOM y en
-// SVG. Recorre los nodos visibles del contenedor del dashboard con
+// Nivel 1 de extracción (RF01): colores declarados en el DOM y en SVG.
+// Recorre los nodos visibles del contenedor del dashboard con
 // getComputedStyle y registra color, background-color y border-color,
 // más fill y stroke de los elementos SVG (el estilo computado resuelve
-// tanto los atributos de presentación como las variables CSS).
-// Cada observación conserva la referencia al elemento que la origina.
+// atributos de presentación y variables CSS). Cada observación conserva
+// la referencia al elemento que la origina. Sprint 1.
 // ------------------------------------------------------------------
 
 import { parseCssColor } from "../color/conversion.js";

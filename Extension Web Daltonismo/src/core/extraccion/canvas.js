@@ -1,10 +1,9 @@
 // ------------------------------------------------------------------
-// Sprint 1 · Nivel 2 de extracción: muestreo de píxeles de elementos
-// canvas con getImageData, cuantización por corte mediano (median cut,
+// Nivel 2 de extracción (RF01): muestreo de píxeles de elementos canvas
+// con getImageData, cuantización por corte mediano (median cut,
 // Heckbert 1982) y descarte de los tonos poco frecuentes que produce el
-// suavizado de bordes (antialiasing).
-// Las funciones de muestreo y cuantización son puras y las reutiliza
-// captura.js (nivel 3) desde el service worker.
+// suavizado de bordes. Las funciones de muestreo y cuantización son
+// puras y las reutiliza captura.js (nivel 3). Sprint 1.
 // ------------------------------------------------------------------
 
 // Área mínima (px²) para considerar un canvas como gráfico y no como icono.

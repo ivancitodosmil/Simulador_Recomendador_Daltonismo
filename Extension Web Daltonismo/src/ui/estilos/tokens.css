@@ -1,11 +1,13 @@
 /* ==================================================================
-   Tokens de diseño de la extensión (v0.6.3). ÚNICA fuente de identidad
-   visual: el panel los consume vía var() y el reporte exportable lleva
-   una copia literal del tema claro en src/core/reporte/plantilla.js
-   (el reporte es un documento imprimible, solo tema claro); la
-   herramienta herramientas/auditoria-tokens.mjs verifica que esa copia
-   coincide, que los dos bloques oscuros son idénticos y que TODOS los
-   pares de este archivo cumplen:
+   Tokens de diseño de la extensión: única fuente de identidad visual.
+   El panel los consume vía var() y el reporte exportable lleva una
+   copia literal del tema claro en src/core/reporte/plantilla.js (el
+   reporte es un documento imprimible, solo tema claro). Tema claro de
+   la versión 0.6.0; tema oscuro «Azul noche» de la 0.6.7.
+
+   La herramienta herramientas/auditoria-tokens.mjs verifica que esa
+   copia coincide, que los dos bloques oscuros son idénticos y que todos
+   los pares de este archivo cumplen:
    - texto (incluido el secundario y los semánticos) ≥ 4,5:1 sobre
      cada superficie donde se apoya;
    - bordes de control y anillo de foco ≥ 3:1;
@@ -17,15 +19,15 @@
    ligero sesgo de matiz hacia ese azul (nunca grises puros). Los
    semánticos derivan de la familia Okabe-Ito: correcto del verde
    azulado #009E73, aviso del naranja #E69F00 y error del bermellón
-   #D55E00 en tema claro. El tema oscuro (0.6.7, «Azul noche») usa
-   neutros azulados poco saturados, texto blanco roto (≈ 12:1, por
+   #D55E00 en tema claro. El tema oscuro usa neutros azulados poco
+   saturados, texto blanco roto (≈ 12:1, por
    encima de AAA sin deslumbrar), error rojo coral #F28080, aviso ámbar
    #E5C46E y correcto verde azulado #78CFBE; separación mínima del trío
    bajo las tres deficiencias ≥ 12 (auditada). Cada muestra y banda del
    dashboard lleva su propio borde para leerse sobre el fondo azulado.
 
-   Tema (0.6.3): mientras no se elige, sigue la preferencia del
-   sistema; la elección manual se guarda en chrome.storage.local y se
+   Tema: mientras no se elige, sigue la preferencia del sistema; la
+   elección manual se guarda en chrome.storage.local y se
    aplica como data-tema="claro|oscuro" en <html> antes del primer
    pintado (src/ui/panel/tema.js). Patrón: claro en :root; oscuro bajo
    prefers-color-scheme: dark guardado con :root:not([data-tema="claro"])
@@ -74,14 +76,6 @@
   --tam-base: 0.875rem;        /* 14 px: texto general y títulos     */
   --tam-titulo: 1rem;          /* 16 px: nombre, esquema, cifras     */
   --tam-grande: 1.375rem;      /* 22 px: cifras del marcador         */
-
-  /* --- Espaciado (escala de 8 px con medio paso) --- */
-  --esp-1: 4px;
-  --esp-2: 8px;
-  --esp-3: 12px;
-  --esp-4: 16px;
-  --esp-5: 24px;
-  --esp-6: 32px;
 
   /* --- Formas y tamaños (radios de la maqueta) --- */
   --radio-s: 4px;

@@ -1,16 +1,15 @@
 // ------------------------------------------------------------------
-// Sprint 2 · Matrices de simulación de Machado, Oliveira y Fernandes
-// (2009), "A Physiologically-based Model for Simulation of Color
-// Vision Deficiency", IEEE Transactions on Visualization and Computer
-// Graphics 15(6). Valores transcritos de la tabla publicada por los
-// autores en el sitio del artículo (UFRGS); severidad 1.0 corresponde
-// a la dicromatopsia completa (protanopia / deuteranopia).
+// Matrices de simulación de Machado, Oliveira y Fernandes (2009), "A
+// Physiologically-based Model for Simulation of Color Vision
+// Deficiency", IEEE Transactions on Visualization and Computer Graphics
+// 15(6), transcritas de la tabla publicada por los autores (UFRGS);
+// severidad 1.0 es la dicromatopsia completa (RF02, RF03). Sprint 2.
 //
-// Las matrices están PRECALCULADAS como constantes para severidades de
+// Las matrices están precalculadas como constantes para severidades de
 // 0.0 a 1.0 en pasos de 0.1 (índice = severidad × 10); no se calculan
-// en tiempo de ejecución. Operan sobre RGB LINEAL (ver machado.js).
+// en tiempo de ejecución. Operan sobre RGB lineal (ver machado.js).
 // Propiedad de control: cada fila suma 1, de modo que los grises
-// permanecen invariantes (se verifica en las pruebas del sprint).
+// permanecen invariantes (lo verifican las pruebas automatizadas).
 // ------------------------------------------------------------------
 
 /** Paso de severidad de la tabla publicada. */
@@ -23,6 +22,7 @@ const IDENTITY = [
   [0.0, 0.0, 1.0]
 ];
 
+/** Matrices por tipo; el índice de cada lista es la severidad × 10. */
 export const MACHADO_MATRICES = {
   protanopia: [
     IDENTITY,

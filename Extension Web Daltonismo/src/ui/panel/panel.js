@@ -1,22 +1,21 @@
 // ------------------------------------------------------------------
-// Panel lateral (iteración 0.6.3): reproducción de la maqueta
-// Pruebas/Docs/maqueta-panel.html con los datos reales de la
-// evaluación. De arriba abajo: cabecera (logotipo, nombre, línea de
-// estado, selector de tema), simulación siempre abierta con el botón
-// de evaluar dentro, resumen (bandas de la paleta + marcador de cuatro
-// datos), paleta, contraste y distinguibilidad plegables,
-// recomendación y pie. Sin iconos ni glifos; ningún estado se comunica
+// Lógica del panel lateral: simulación por pestaña (RF02, RF03), resumen,
+// paleta (RF01), contraste (RF04), distinguibilidad (RF05), series
+// consideradas y recomendación con previsualización (RF06, RF07),
+// exportación del reporte (RF08) y tema claro/oscuro. Sprints 3 a 5;
+// panel por pestaña desde 0.6.0 y diseño de la maqueta desde 0.6.3.
+//
+// Modelo por pestaña: el service worker habilita el panel por pestaña;
+// la simulación de la página es por pestaña y su único control es el
+// desplegable (elegir aplica, «Ninguna» retira); evaluation:, sim: y
+// ui:<tabId> viven en chrome.storage.session y la reconciliación con la
+// página (GET_PAGE_STATE) es la fuente de verdad.
+//
+// Tema: mientras el usuario no elige, manda el sistema; la elección se
+// guarda en chrome.storage.local (global) y se espeja en localStorage
+// para que tema.js la aplique antes del primer pintado. Sin iconos ni
+// glifos salvo el sol y la luna del selector; ningún estado se comunica
 // solo con color.
-//
-// Tema (0.6.3): mientras el usuario no elige, manda el sistema; la
-// elección se guarda en chrome.storage.local (global) y se espeja en
-// localStorage para que tema.js la aplique antes del primer pintado.
-//
-// Modelo por pestaña (0.6.0): panel habilitado por pestaña desde el
-// service worker; la simulación de la página es por pestaña y su único
-// control es el desplegable (elegir aplica, «Ninguna» retira);
-// evaluation:/sim:/ui:<tabId> en chrome.storage.session; la
-// reconciliación con la página (GET_PAGE_STATE) es la fuente de verdad.
 // ------------------------------------------------------------------
 
 import { rgbToHex, rgbToLab } from "../../core/color/conversion.js";
@@ -182,6 +181,30 @@ function el(tag, className = "", text = null) {
 // Tema: sistema por defecto, elección manual global y sin parpadeo
 // ------------------------------------------------------------------
 
+// Preferencia del sistema: manda mientras el usuario no elige.
+const systemDark = matchMedia("(prefers-color-scheme: dark)");
+
+/** Tema que se ve ahora: el elegido o, si no hay elección, el del sistema. */
+function effectiveTheme() {
+  return state.theme || (systemDark.matches ? "oscuro" : "claro");
+}
+
+/**
+ * Sincroniza el selector con el tema efectivo: la pieza se desliza a la
+ * opción que corresponde (data-valor), aria-checked la marca y solo ella
+ * entra en el orden de tabulación. Que la elección venga del sistema o
+ * del usuario no cambia lo que se ve, solo lo que se guarda.
+ */
+function syncThemeGroup() {
+  const effective = effectiveTheme();
+  themeGroup.dataset.valor = effective;
+  for (const radio of themeRadios) {
+    const checked = radio.dataset.tema === effective;
+    radio.setAttribute("aria-checked", String(checked));
+    radio.tabIndex = checked ? 0 : -1;
+  }
+}
+
 /** Aplica el tema (null = seguir al sistema) y sincroniza el grupo. */
 function applyTheme(theme) {
   state.theme = theme === "claro" || theme === "oscuro" ? theme : null;
@@ -195,13 +218,14 @@ function applyTheme(theme) {
   } catch (error) {
     // Sin localStorage: el tema se aplica igualmente en esta sesión.
   }
-  themeRadios.forEach((radio, index) => {
-    const checked = radio.dataset.tema === state.theme;
-    radio.setAttribute("aria-checked", String(checked));
-    // Tabulación itinerante: la elegida, o la primera si manda el sistema.
-    radio.tabIndex = checked || (!state.theme && index === 0) ? 0 : -1;
-  });
+  syncThemeGroup();
 }
+
+// Si manda el sistema y el sistema cambia, el selector lo refleja.
+systemDark.addEventListener("change", () => {
+  if (!state.theme) syncThemeGroup();
+});
+
 
 /** Lee la preferencia global guardada (chrome.storage.local). */
 async function loadTheme() {
@@ -240,6 +264,7 @@ function saveUiState() {
 
 let scrollSaveTimer = null;
 
+/** Guarda la posición de desplazamiento con un retardo de 250 ms. */
 function scheduleScrollSave() {
   if (scrollSaveTimer) clearTimeout(scrollSaveTimer);
   scrollSaveTimer = setTimeout(() => {
@@ -248,25 +273,30 @@ function scheduleScrollSave() {
   }, 250);
 }
 
+/** Abre o pliega las secciones y las casillas de series según lo guardado para la pestaña. */
 function restoreSectionState() {
   state.restoringSections = true;
   for (const section of document.querySelectorAll("details.bloque")) {
     const key = section.dataset.section;
     if (!key) continue;
-    // Sin preferencia guardada todas las secciones salen abiertas (0.6.6);
-    // el plegado se recuerda solo en esta pestaña hasta volver a evaluar.
+    // Sin preferencia guardada todas las secciones salen abiertas; el
+    // plegado se recuerda solo en esta pestaña hasta volver a evaluar.
     const collapsed = state.ui.collapsed && typeof state.ui.collapsed[key] === "boolean"
       ? state.ui.collapsed[key]
       : false;
     section.open = !collapsed;
   }
   state.restoringSections = false;
+  // Las casillas de series consideradas siguen la misma regla: abiertas
+  // salvo que el usuario las haya plegado en esta pestaña.
+  setSeriesPanelOpen(!(state.ui.collapsed && state.ui.collapsed.series === true));
 }
 
 // ------------------------------------------------------------------
 // Estados: texto y forma
 // ------------------------------------------------------------------
 
+/** Pinta un estado en el elemento, con la marca «Aviso» o «Error» delante del texto. */
 function renderStatusInto(element, kind, text) {
   element.className = "estado";
   element.replaceChildren();
@@ -319,6 +349,7 @@ function renderTabState() {
   }
 }
 
+/** Insignia del icono: pares que incumplen más pares confundibles. */
 function updateBadge() {
   if (!state.tabId || !state.evaluation || !state.evaluation.ok) return;
   const contrast = state.evaluation.contrast || { text: [], graphics: [] };
@@ -438,7 +469,7 @@ async function loadSuggestedSimulation() {
 }
 
 /**
- * Sincroniza el filtro de la PÁGINA con el desplegable: página simulada
+ * Sincroniza el filtro de la página con el desplegable: página simulada
  * ⟺ desplegable con deficiencia. La confirmación solo se anuncia a los
  * lectores de pantalla (el desplegable ya dice qué simulación hay).
  */
@@ -770,15 +801,17 @@ function renderDistinguishability() {
 }
 
 // ------------------------------------------------------------------
-// Series consideradas (ajuste S4 + sprint 5)
+// Series consideradas: selección por defecto y casillas
 // ------------------------------------------------------------------
 
+/** Color de fondo de body o html en la paleta, si la extracción lo registró. */
 function pageBackgroundEntry() {
   const palette = state.evaluation && state.evaluation.ok ? state.evaluation.palette || [] : [];
   const isPageElement = (example) => /^(body|html)($|[.#])/.test(example);
   return palette.find((color) => color.roles.includes("background") && (color.examples || []).some(isPageElement)) || null;
 }
 
+/** Fondo contra el que revalida la recomendación: el de página o, si no, el primer fondo. */
 function dominantBackgroundRgb() {
   const pageBackground = pageBackgroundEntry();
   if (pageBackground) return pageBackground.rgb;
@@ -790,13 +823,14 @@ function dominantBackgroundRgb() {
 // Descriptores de elementos estructurales de ejes y cuadrícula (D3/SVG).
 const STRUCTURAL_EXAMPLE_PATTERN = /^(svg|g|line|path\.domain)$|\.(domain|tick|eje|grid|axis)($|\b)/i;
 
-// Parámetros calibrados en vivo sobre los seis paneles del banco (sprint 5,
-// bloque 1): piso de proporción 0,8 % (variantes de cola ≤ 0,79 %, series
-// reales desde 0,80 %); absorción ΔE00 9,0 entre ORIGINALES (eslabón máximo
-// medido 8,3; series reales bien espaciadas ≥ 14); croma mínimo C*ab 6
+// Parámetros calibrados en vivo sobre los seis paneles del banco de
+// pruebas: piso de proporción 0,8 % (variantes de cola ≤ 0,79 %, series
+// reales desde 0,80 %); absorción ΔE00 9,0 entre originales (eslabón
+// máximo medido 8,3; series reales bien espaciadas ≥ 14), distinta del
+// umbral de confusión porque mide otra cosa; croma mínimo C*ab 6
 // (acromáticos de suavizado 0,4–2,5; serie real menos saturada ≈ 20).
-// Solo se absorben colores SIN elemento; el absorbido queda desmarcado con
-// su nota y puede volver a marcarse.
+// Solo se absorben colores sin elemento; el absorbido queda desmarcado
+// con su nota y puede volver a marcarse.
 const SERIES_MIN_SHARE = 0.008;
 const SERIES_ABSORB_DELTA = 9.0;
 const SERIES_MIN_CHROMA = 6;
@@ -897,6 +931,7 @@ function buildSeriesCheckbox(entry) {
   return item;
 }
 
+/** Recalcula la selección por defecto cuando cambia la evaluación, respetando la guardada. */
 function ensureSeriesSelection() {
   if (state.selectionSource === state.evaluation) return;
   state.selectionSource = state.evaluation;
@@ -913,6 +948,17 @@ function ensureSeriesSelection() {
     state.seriesSelection.set(entry.hex, selected);
     state.seriesNotes.set(entry.hex, decision.note);
     seriesSelectionList.append(buildSeriesCheckbox(entry));
+  }
+}
+
+/** Muestra u oculta las casillas de series y sincroniza el botón «Ocultar»/«Revisar». */
+function setSeriesPanelOpen(open, { focus = false } = {}) {
+  seriesPanel.hidden = !open;
+  seriesReview.setAttribute("aria-expanded", String(open));
+  seriesReview.textContent = open ? "Ocultar" : "Revisar";
+  if (open && focus) {
+    const first = seriesSelectionList.querySelector("input");
+    if (first) first.focus();
   }
 }
 
@@ -1052,7 +1098,7 @@ function renderRecommendation() {
   const totalFailures =
     (contrast.text || []).filter((group) => !group.passes).length +
     (contrast.graphics || []).filter((group) => !group.passes).length;
-  // Salida temprana (sprint 5, bloque 2): solo fallos 1.4.11 de rol serie
+  // Salida temprana de la recomendación: solo fallos 1.4.11 de rol serie
   // cuyo primer plano coincide (ΔE00 < 2,5) con una serie considerada.
   const seriesFailures = (contrast.graphics || []).filter((group) =>
     !group.passes && (group.roles || []).includes("series") &&
@@ -1241,6 +1287,7 @@ async function runEvaluation() {
   }
 }
 
+/** Pregunta a la página qué filtro y previsualización tiene y alinea el panel. */
 async function reconcilePageState() {
   let filter = { active: false, config: null };
   let previewActive = false;
@@ -1310,7 +1357,7 @@ async function loadEvaluation() {
 
 evaluateButton.addEventListener("click", runEvaluation);
 
-// HU08 / RF08 (0.6.5): «Exportar PDF» abre el reporte como página propia
+// RF08: «Exportar PDF» abre el reporte como página propia
 // de la extensión en una pestaña nueva, con los datos pasados por el
 // almacenamiento de sesión; esa página lanza el diálogo de impresión y el
 // PDF lo genera el propio navegador (Guardar como PDF).
@@ -1383,16 +1430,14 @@ familySelect.addEventListener("change", () => {
   renderRecommendation();
 });
 
-// «Revisar»: abre y cierra las casillas de series consideradas.
+// «Ocultar»/«Revisar»: pliega o abre las casillas de series consideradas;
+// como con las secciones, el plegado se recuerda solo en esta pestaña.
 seriesReview.addEventListener("click", () => {
   const open = seriesPanel.hidden;
-  seriesPanel.hidden = !open;
-  seriesReview.setAttribute("aria-expanded", String(open));
-  seriesReview.textContent = open ? "Ocultar" : "Revisar";
-  if (open) {
-    const first = seriesSelectionList.querySelector("input");
-    if (first) first.focus();
-  }
+  setSeriesPanelOpen(open, { focus: true });
+  if (open) delete state.ui.collapsed.series;
+  else state.ui.collapsed.series = true;
+  saveUiState();
 });
 
 previewToggle.addEventListener("click", () => {
@@ -1417,17 +1462,13 @@ themeGroup.addEventListener("keydown", (event) => {
   const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "Enter"];
   if (!keys.includes(event.key)) return;
   event.preventDefault();
-  const current = themeRadios.findIndex((radio) => radio.dataset.tema === state.theme);
-  let next;
   if (event.key === " " || event.key === "Enter") {
     const radio = event.target.closest("[role=radio]");
-    next = radio ? themeRadios.indexOf(radio) : 0;
-  } else if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-    next = current === -1 ? 0 : (current + 1) % themeRadios.length;
-  } else {
-    next = current === -1 ? themeRadios.length - 1 : (current - 1 + themeRadios.length) % themeRadios.length;
+    chooseTheme(radio ? radio.dataset.tema : effectiveTheme());
+    return;
   }
-  chooseTheme(themeRadios[next].dataset.tema);
+  // Dos opciones: cualquier flecha pasa a la otra y mueve el foco.
+  chooseTheme(effectiveTheme() === "claro" ? "oscuro" : "claro");
 });
 
 for (const section of document.querySelectorAll("details.bloque")) {
@@ -1458,6 +1499,7 @@ chrome.tabs.onActivated.addListener(() => {
   loadEvaluation();
 });
 
+/** Migra las claves de simulación de versiones anteriores a lastSimulation. */
 async function migrateLocalStorage() {
   try {
     const stored = await chrome.storage.local.get(["lastSimulation", "simulationType", "simulationSeverity", "paletteFamily"]);

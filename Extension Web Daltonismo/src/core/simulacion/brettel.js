@@ -1,7 +1,7 @@
 // ------------------------------------------------------------------
-// Sprint 2 · Simulación de tritanopia por el método de Brettel, Viénot
-// y Mollon (1997), "Computerized simulation of color appearance for
-// dichromats", JOSA A 14(10).
+// Simulación de tritanopia (RF02, RF03) por el método de Brettel,
+// Viénot y Mollon (1997), "Computerized simulation of color appearance
+// for dichromats", JOSA A 14(10). Sprint 2.
 //
 // El método proyecta cada estímulo, en el espacio de conos LMS, sobre
 // dos semiplanos que comparten el eje neutro (la diagonal acromática):
