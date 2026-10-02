@@ -1,11 +1,11 @@
 // ------------------------------------------------------------------
-// Sprint 3 · Contraste según WCAG 2.1: luminancia relativa y relación
-// de contraste (L1 + 0.05) / (L2 + 0.05).
+// Contraste según WCAG 2.1 (RF04): luminancia relativa y relación de
+// contraste (L1 + 0.05) / (L2 + 0.05). Sprint 3.
 //
-// Nota deliberada: WCAG 2.1 define la linealización con el umbral
-// 0.03928 (heredado de la especificación sRGB original), mientras que
+// Decisión: WCAG 2.1 define la linealización con el umbral 0.03928
+// (heredado de la especificación sRGB original), mientras que
 // conversion.js usa 0.04045 (IEC 61966-2-1 corregida). La diferencia
-// numérica es despreciable, pero aquí se implementa la fórmula EXACTA
+// numérica es despreciable, pero aquí se implementa la fórmula exacta
 // del estándar para que las cifras coincidan con cualquier verificador
 // WCAG de referencia; por eso no se reutiliza srgbToLinear.
 // ------------------------------------------------------------------
@@ -23,7 +23,7 @@ function wcagChannel(value) {
 }
 
 /** Luminancia relativa de un color sRGB {r,g,b} en [0,255], según WCAG 2.1. */
-export function relativeLuminance({ r, g, b }) {
+function relativeLuminance({ r, g, b }) {
   return (
     0.2126 * wcagChannel(r / 255) +
     0.7152 * wcagChannel(g / 255) +
@@ -44,7 +44,7 @@ export function contrastRatio(colorA, colorB) {
 }
 
 /**
- * Comparación contra umbral SIN redondeo previo: 2.999:1 no satisface un
+ * Comparación contra umbral sin redondeo previo: 2.999:1 no satisface un
  * criterio de 3:1. El redondeo es solo cosa de la presentación.
  */
 export function meetsThreshold(ratio, threshold) {

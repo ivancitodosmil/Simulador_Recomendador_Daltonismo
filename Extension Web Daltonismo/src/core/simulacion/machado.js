@@ -1,9 +1,9 @@
 // ------------------------------------------------------------------
-// Sprint 2 · Aplicación de las matrices de Machado et al. (2009) para
-// protanopia y deuteranopia con severidad graduable.
-// Las matrices operan en RGB LINEAL: se linealiza el sRGB con la gamma
-// de core/color/conversion.js, se multiplica y se vuelve a comprimir.
-// Nunca se aplican sobre el sRGB directo.
+// Aplicación de las matrices de Machado et al. (2009) para protanopia y
+// deuteranopia con severidad graduable (RF02, RF03). Las matrices
+// operan en RGB lineal: se linealiza el sRGB con la gamma de
+// core/color/conversion.js, se multiplica y se vuelve a comprimir.
+// Nunca se aplican sobre el sRGB directo. Sprint 2.
 // ------------------------------------------------------------------
 
 import { srgbToLinear, linearToSrgb } from "../color/conversion.js";
@@ -11,9 +11,9 @@ import { MACHADO_MATRICES, MACHADO_SEVERITY_STEP } from "./matrices.js";
 
 /**
  * Devuelve la matriz precalculada para el tipo y la severidad indicados.
- * La severidad se recorta a [0, 1] y se CUANTIZA al paso publicado de 0.1
- * (los autores sugieren interpolar entre pasos, pero la regla del sprint es
- * usar solo las matrices precalculadas, sin cálculo en tiempo de ejecución;
+ * La severidad se recorta a [0, 1] y se cuantiza al paso publicado de 0.1
+ * (los autores sugieren interpolar entre pasos, pero la decisión del proyecto
+ * es usar solo las matrices precalculadas, sin cálculo en tiempo de ejecución;
  * el control de la interfaz avanza en pasos de 0.1, así que el valor del
  * deslizador siempre coincide con una matriz exacta de la tabla).
  */

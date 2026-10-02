@@ -1,10 +1,9 @@
 // ------------------------------------------------------------------
-// Sprint 3 · Distinguibilidad entre series: matriz de diferencias
-// CIEDE2000 por pares de colores de serie. Se calcula sobre la paleta
-// YA TRANSFORMADA por el módulo de simulación con el método exacto
-// (machado.js / brettel.js, la salida del Sprint 2); el llamador decide
-// el tipo y la severidad según la selección del usuario, y este módulo
-// ofrece simulateForConfig como enrutador único para hacerlo.
+// Distinguibilidad entre series (RF05): matriz de diferencias CIEDE2000
+// por pares de colores de serie, calculada sobre la paleta ya
+// transformada por el simulador exacto (machado.js / brettel.js). El
+// llamador decide tipo y severidad según la selección del usuario y
+// este módulo ofrece simulateForConfig como enrutador único. Sprint 3.
 // ------------------------------------------------------------------
 
 import { ciede2000 } from "../color/diferencia.js";
@@ -13,7 +12,7 @@ import { simulateMachado } from "../simulacion/machado.js";
 import { simulateTritanopia } from "../simulacion/brettel.js";
 
 /**
- * Umbral de confusión POR DEFECTO, no constante del algoritmo: por debajo
+ * Umbral de confusión por defecto, no constante del algoritmo: por debajo
  * de este ΔE00 dos series se consideran confundibles. Es un parámetro
  * porque su calibración corresponde al capítulo cinco de la tesis.
  *

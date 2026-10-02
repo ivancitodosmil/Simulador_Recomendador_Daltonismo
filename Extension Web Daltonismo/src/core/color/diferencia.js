@@ -1,15 +1,16 @@
 // ------------------------------------------------------------------
-// Sprint 3 · Diferencia de color CIEDE2000 (ΔE00), programada a partir
-// de las notas de implementación de Sharma, Wu y Dalal (2005), "The
-// CIEDE2000 Color-Difference Formula: Implementation Notes,
-// Supplementary Test Data, and Mathematical Observations", Color
-// Research & Application 30(1). Incluye el término de rotación RT que
-// corrige la región azul (h̄' ≈ 275°). Sin librerías.
+// Diferencia de color CIEDE2000 (ΔE00) para la agrupación de la paleta
+// (RF01), la distinguibilidad (RF05) y la recomendación (RF06),
+// programada a partir de las notas de implementación de Sharma, Wu y
+// Dalal (2005), "The CIEDE2000 Color-Difference Formula: Implementation
+// Notes, Supplementary Test Data, and Mathematical Observations", Color
+// Research & Application 30(1). Sprint 3.
 //
-// La validación que justifica programar la fórmula en lugar de usar
-// una librería es SHARMA_TEST_PAIRS: los 34 pares publicados por esos
+// Incluye el término de rotación RT que corrige la región azul
+// (h̄' ≈ 275°). Programar la fórmula en lugar de usar una librería se
+// justifica con SHARMA_TEST_PAIRS: los 34 pares publicados por esos
 // autores, reproducidos con tolerancia de una diezmilésima por
-// runSharmaValidation() (invocada desde las pruebas del sprint).
+// runSharmaValidation() (la invocan las pruebas automatizadas).
 // Parámetros paramétricos kL = kC = kH = 1.
 // ------------------------------------------------------------------
 
@@ -96,7 +97,7 @@ export function ciede2000(lab1, lab2) {
  * límite de la discontinuidad de tono (pares 1-16) y colores reales
  * (pares 17-34).
  */
-export const SHARMA_TEST_PAIRS = [
+const SHARMA_TEST_PAIRS = [
   [50.0000, 2.6772, -79.7751, 50.0000, 0.0000, -82.7485, 2.0425],
   [50.0000, 3.1571, -77.2803, 50.0000, 0.0000, -82.7485, 2.8615],
   [50.0000, 2.8361, -74.0200, 50.0000, 0.0000, -82.7485, 3.4412],

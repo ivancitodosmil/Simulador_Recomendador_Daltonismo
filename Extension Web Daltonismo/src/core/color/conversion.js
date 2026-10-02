@@ -1,7 +1,8 @@
 // ------------------------------------------------------------------
-// Sprint 1 · Conversión de color propia, sin librerías externas:
-// sRGB ↔ RGB lineal ↔ XYZ (D65) ↔ CIELAB, más utilidades para leer
-// los formatos de color que devuelve getComputedStyle y el hexadecimal.
+// Conversión de color propia, sin librerías externas: sRGB ↔ RGB lineal
+// ↔ XYZ (D65) ↔ CIELAB, más la lectura de los formatos de color que
+// devuelve getComputedStyle y del hexadecimal. Base de la extracción
+// (RF01), la simulación (RF02) y las métricas (RF04, RF05). Sprint 1.
 // ------------------------------------------------------------------
 
 // Matrices sRGB ↔ XYZ con blanco de referencia D65 (IEC 61966-2-1).
@@ -26,8 +27,8 @@ const KAPPA = 24389 / 27;    // (29/3)^3
 
 /**
  * Linealización gamma explícita de un canal sRGB en [0, 1].
- * Nota: el umbral 0.04045 es el del estándar sRGB; WCAG usa 0.03928,
- * ese cálculo pertenece a contraste.js (sprint posterior).
+ * El umbral 0.04045 es el del estándar sRGB; WCAG usa 0.03928 y ese
+ * cálculo vive en contraste.js con la fórmula literal del estándar.
  */
 export function srgbToLinear(value) {
   return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
@@ -49,7 +50,7 @@ export function rgbToXyz({ r, g, b }) {
 }
 
 /** XYZ (D65) a CIELAB. */
-export function xyzToLab({ x, y, z }) {
+function xyzToLab({ x, y, z }) {
   const f = (t) => (t > EPSILON ? Math.cbrt(t) : (KAPPA * t + 16) / 116);
   const fx = f(x / WHITE_D65.x);
   const fy = f(y / WHITE_D65.y);
@@ -58,7 +59,7 @@ export function xyzToLab({ x, y, z }) {
 }
 
 /** CIELAB a XYZ (D65), inversa exacta de xyzToLab. */
-export function labToXyz({ l, a, b }) {
+function labToXyz({ l, a, b }) {
   const fy = (l + 16) / 116;
   const fx = fy + a / 500;
   const fz = fy - b / 200;
@@ -89,7 +90,7 @@ export function rgbToLab(rgb) {
   return xyzToLab(rgbToXyz(rgb));
 }
 
-/** Conversión directa CIELAB → sRGB [0,255]. */
+/** Conversión directa CIELAB → sRGB [0,255], inversa de rgbToLab (la ejercitan las pruebas). */
 export function labToRgb(lab) {
   return xyzToRgb(labToXyz(lab));
 }

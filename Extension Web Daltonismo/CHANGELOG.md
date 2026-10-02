@@ -3,6 +3,69 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Las versiones corresponden a los sprints del trabajo de titulación.
 
+## [0.6.10] — 2026-10-02
+
+### Corregido
+- El panel se abre al primer clic en el icono también con el service
+  worker en frío (tras recargar la extensión o abrir el navegador):
+  `sidePanel.open()` se llama en el mismo gesto que `setOptions()`, sin
+  esperar entre ambas. Antes el `await` consumía el gesto, Chrome
+  rechazaba la apertura y solo prosperaba el segundo clic.
+
+### Cambiado
+- Las casillas de series consideradas aparecen abiertas al evaluar, como
+  el resto de secciones; el botón pasa a «Ocultar» y el plegado se
+  recuerda solo en esa pestaña hasta volver a evaluar.
+
+## [0.6.9] — 2026-10-01
+
+### Cambiado
+- Depuración final sin cambio de comportamiento: la evaluación de los
+  seis paneles del banco de pruebas y el reporte generado son idénticos
+  a los de la 0.6.8 (comparación automática de los datos del reporte,
+  del texto del panel y del HTML del reporte de panel-svg).
+- Comentarios: cada archivo abre con una cabecera que dice qué hace, qué
+  requisito cubre (RF01 a RF08) y en qué sprint o versión nació; las
+  funciones exportadas llevan JSDoc; las decisiones no obvias conservan
+  su justificación y las citas; se retiran las referencias al historial
+  (sprints, frentes, bloques, iteraciones) y las mayúsculas de énfasis.
+- `README.md` describe la estructura real: panel, página del reporte,
+  estilos, herramientas y las dos maquetas de diseño de `Pruebas/Docs`,
+  que llevan ahora una nota de cabecera como documentos de diseño fuera
+  del paquete.
+
+### Eliminado
+- Mensajes `EXTRACT_PALETTE` y `PING` del service worker y del content
+  script (restos del flujo del popup), la importación sin uso de
+  `rgbToHex` en `algoritmo.js`, los tokens de espaciado `--esp-1` a
+  `--esp-6` sin uso y la clase `lista-rc` sin regla. Dejan de exportarse
+  `relativeLuminance`, `xyzToLab`, `labToXyz`, `SHARMA_TEST_PAIRS` y
+  `resolveContainer`, que solo se usan dentro de su módulo.
+- Archivo vacío `muestras-azul-noche-b.mjs` de la raíz y maquetas
+  antiguas de `Pruebas/Docs` (copias, borradores, captura y PDF de
+  impresión): quedan solo `maqueta-panel.html` y `maqueta-reporte.html`.
+
+## [0.6.8] — 2026-10-01
+
+### Cambiado
+- Selector de tema nuevo (de `docs/maqueta-panel.html`): píldora con dos
+  opciones del mismo ancho, sol «Claro» y luna «Oscuro», y una pieza con
+  borde `--borde` y sombra muy suave que se desliza a la elegida en
+  180 ms (sin movimiento bajo `prefers-reduced-motion`). La elegida va
+  en acento y semibold; la otra en texto secundario. Los dos SVG de
+  trazo son la única excepción a la regla de no usar iconos; el nombre
+  accesible de cada opción sigue siendo su palabra y cada una lleva
+  `title`.
+- La cabecera queda siempre en una línea: consulta de contenedor sobre
+  la cabecera (≤ 420 px solo sol y luna, las palabras pasan a solo
+  lector), el título no se parte y la línea de estado se recorta con
+  puntos suspensivos. A 320 px ya no se parte en dos líneas.
+- El selector refleja el tema efectivo (el del sistema mientras no se
+  elige); la lógica de guardado y aplicación antes del primer pintado
+  no cambia.
+- Herramienta `herramientas/rastreo-ui.mjs`: rastreo estático que admite
+  solo esos dos SVG y la sombra de la pieza del selector.
+
 ## [0.6.7] — 2026-09-29
 
 ### Cambiado

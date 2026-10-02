@@ -1,9 +1,8 @@
 // ------------------------------------------------------------------
-// Sprint 5 · HU08 / RF08: generador del reporte de evaluación.
-// Reúne los datos YA calculados por el panel (no vuelve a evaluar nada)
-// en una estructura serializable que consume plantilla.js. Todo el
-// contenido es local: sin peticiones de red ni recursos externos, en
-// coherencia con el RNF02.
+// Generador del reporte de evaluación (RF08): reúne los datos ya
+// calculados por el panel (no vuelve a evaluar nada) en una estructura
+// serializable que consume plantilla.js. Todo el contenido es local,
+// sin peticiones de red ni recursos externos (RNF02). Sprint 5.
 // ------------------------------------------------------------------
 
 import { rgbToHex } from "../color/conversion.js";
@@ -24,7 +23,7 @@ import { simulateForConfig } from "../evaluacion/distinguibilidad.js";
  *   simulatedRgbs: colores de serie simulados con la configuración vigente
  *   distSimulated / distOriginal: matrices de distinguibilidad vigentes
  *   recommendation: resultado de recommendPalette
- *   overview: (0.6.5) desenlace bajo las tres deficiencias cuando no hay
+ *   overview: desenlace bajo las tres deficiencias cuando no hay
  *     simulación: [{ type, outcome, schemeName, minDelta, seriesCount,
  *     maxAvailable, exhausted }]
  */
@@ -56,14 +55,14 @@ export function buildReportData({
   }));
 
   // Colores considerados que provienen del muestreo de canvas: la
-  // previsualización no puede recolorearlos (exclusión documentada del
-  // Sprint 4) y el reporte lo declara.
+  // previsualización no puede recolorearlos (exclusión documentada en
+  // el content script) y el reporte lo declara.
   const selectedWithoutElements = consideredSeries.filter(
     (entry) => entry.selected && !entry.hasElements
   ).length;
 
   // Colores agrupados como variante de suavizado de una serie declarada
-  // (absorción del sprint 5): el reporte lo declara si ocurrió.
+  // (absorción de la selección por defecto): el reporte lo declara si ocurrió.
   const variantsGrouped = consideredSeries.filter(
     (entry) => typeof entry.note === "string" && entry.note.startsWith("variante de")
   ).length;

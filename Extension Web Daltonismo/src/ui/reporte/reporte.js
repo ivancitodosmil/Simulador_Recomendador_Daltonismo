@@ -1,12 +1,12 @@
 // ------------------------------------------------------------------
-// Iteración 0.6.5 · Página propia del reporte. Se abre en una pestaña
-// nueva desde el panel («Exportar PDF») con los datos de la evaluación
-// pasados por chrome.storage.session (clave report:<id> en ?id=).
-// Pinta el reporte con plantilla.js, pone como título el nombre de
-// archivo que propondrá Chrome («Reporte cromático · nombre · fecha»)
-// y, cuando termina de pintarse, lanza window.print() para que el
-// usuario lo guarde con el destino «Guardar como PDF». El PDF lo
-// genera el propio navegador: texto real y seleccionable, sin
+// Página propia del reporte (RF08). Se abre en una pestaña nueva desde
+// el panel («Exportar PDF») con los datos de la evaluación pasados por
+// chrome.storage.session (clave report:<id> en ?id=). Pinta el reporte
+// con plantilla.js, pone como título el nombre de archivo que propondrá
+// Chrome y lanza window.print() cuando termina de pintarse. Versión 0.6.5.
+//
+// Decisión: el PDF lo genera el propio navegador con el destino «Guardar
+// como PDF», así el texto es real y seleccionable y no hacen falta
 // librerías ni permisos adicionales. Sin peticiones de red (RNF02).
 // ------------------------------------------------------------------
 

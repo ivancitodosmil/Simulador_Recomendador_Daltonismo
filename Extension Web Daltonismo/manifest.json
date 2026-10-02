@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Evaluador cromático de dashboards",
-  "version": "0.6.7",
+  "version": "0.6.10",
   "description": "Evalúa la accesibilidad cromática de dashboards para personas con daltonismo: simula deficiencias, mide contraste WCAG y propone paletas. Todo el cálculo es local.",
   "minimum_chrome_version": "116",
   "icons": {

@@ -1,9 +1,9 @@
 // ------------------------------------------------------------------
-// Sprint 1 · Consolidación de la paleta: normaliza los formatos de los
-// tres niveles de extracción, agrupa los colores casi idénticos
-// conservando un representante por grupo, ordena por frecuencia y
-// registra el rol de cada color (fondo, texto, serie o borde) cuando el
-// nivel de extracción lo permite.
+// Consolidación de la paleta (RF01): normaliza los formatos de los tres
+// niveles de extracción, agrupa los colores casi idénticos conservando
+// un representante por grupo, ordena por frecuencia y registra el rol
+// de cada color (fondo, texto, serie o borde) cuando el nivel de
+// extracción lo permite. Sprint 1; agrupación con CIEDE2000 desde el 3.
 // ------------------------------------------------------------------
 
 import { parseCssColor, rgbToHex, rgbToLab } from "../color/conversion.js";
@@ -17,17 +17,14 @@ const GROUPING_DELTA_E = 2.5;
 const MAX_EXAMPLES_PER_COLOR = 3;
 const MAX_ELEMENTS_PER_COLOR = 50;
 
-// DECISIÓN (Sprint 3, punto 8): la agrupación usaba ΔE*ab 1976 porque
-// diferencia.js aún no existía. Se UNIFICA con CIEDE2000 por tres razones:
-// (1) consistencia: toda la cadena (consolidación, distinguibilidad,
-// futura recomendación) mide con la misma métrica perceptual; (2) costo
-// despreciable: la agrupación procesa cientos de entradas por evaluación
-// y CIEDE2000 sigue costando microsegundos por par; (3) el umbral 2.5 se
-// conserva y mejora su semántica: en ΔE00 queda pegado a la diferencia
-// apenas perceptible clásica (≈2.3) y, para tonos saturados, CIEDE2000
-// comprime las diferencias de croma (SC), con lo que agrupa MÁS los restos
-// de antialiasing de un mismo color sin llegar a fusionar series
-// legítimamente distintas (verificado con las pruebas del Sprint 1).
+// La agrupación mide con CIEDE2000, la misma métrica perceptual que la
+// distinguibilidad y la recomendación, para que toda la cadena sea
+// coherente; su coste es despreciable (cientos de entradas por
+// evaluación, microsegundos por par). El umbral 2.5 queda pegado a la
+// diferencia apenas perceptible clásica (≈ 2.3) y, para tonos saturados,
+// CIEDE2000 comprime las diferencias de croma (SC), con lo que agrupa
+// mejor los restos de suavizado de un mismo color sin fusionar series
+// legítimamente distintas (verificado con las pruebas de extracción).
 
 /** Compone un color con alfa parcial sobre fondo blanco. */
 function compositeOverWhite({ r, g, b, a }) {
@@ -115,7 +112,7 @@ function serializeGroups(groups) {
  * Consolida las observaciones del nivel 1 (DOM/SVG, con elemento) y las
  * entradas del nivel 2 (canvas, sin elemento). Devuelve la paleta
  * serializable y un registro hex → elementos que el content script conserva
- * en la página para los sprints de simulación y recomendación.
+ * en la página para la previsualización de la paleta propuesta.
  */
 export function consolidateObservations(domObservations = [], canvasEntries = []) {
   const rawEntries = [];

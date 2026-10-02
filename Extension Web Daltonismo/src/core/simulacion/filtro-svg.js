@@ -1,19 +1,19 @@
 // ------------------------------------------------------------------
-// Sprint 2 · Filtro SVG en vivo: inyecta en la página un <svg> oculto
+// Filtro SVG en vivo (RF02, RF03): inyecta en la página un <svg> oculto
 // con un feColorMatrix y lo aplica por CSS (filter: url(#...)) al
 // contenedor del dashboard. Al desactivar, restaura el valor original
 // de la propiedad filter y retira el nodo inyectado, de modo que la
-// página recupera su estado exacto sin recargar.
+// página recupera su estado exacto sin recargar. Sprint 2.
 //
 // El filtro opera con color-interpolation-filters="linearRGB", el
 // dominio en el que están definidas las matrices de Machado; así el
 // resultado en pantalla coincide con el cálculo de machado.js.
 //
-// TRITANOPIA EN VIVO — decisión y diferencia con brettel.js:
-// El método exacto de Brettel (1997) proyecta cada píxel sobre uno de
-// dos semiplanos según el lado del eje neutro en que cae (decisión
-// M > L por píxel). Esa operación es lineal POR TRAMOS y feColorMatrix
-// solo puede aplicar UNA matriz lineal a todos los píxeles, sin
+// Tritanopia en vivo, decisión y diferencia con brettel.js: el método
+// exacto de Brettel (1997) proyecta cada píxel sobre uno de dos
+// semiplanos según el lado del eje neutro en que cae (decisión M > L
+// por píxel). Esa operación es lineal por tramos y feColorMatrix solo
+// puede aplicar una matriz lineal a todos los píxeles, sin
 // ramificación. Como mejor aproximación aplicable en vivo se usa la
 // matriz de tritanomalía con severidad 1.0 del propio modelo de
 // Machado et al. (2009): es una única matriz lineal en RGB lineal,
@@ -21,8 +21,8 @@
 // de Machado ajusta un desplazamiento espectral global y no reproduce
 // el quiebre entre los lados azul-verdoso y rojizo del eje neutro, por
 // lo que en tonos amarillos y azules profundos difiere del cálculo
-// exacto. La evaluación de la paleta extraída (sprints 3 y 4) usa
-// SIEMPRE brettel.js; esta vista en vivo es orientativa.
+// exacto. La evaluación de la paleta extraída (RF05, RF06) usa siempre
+// brettel.js; esta vista en vivo es orientativa.
 // ------------------------------------------------------------------
 
 import { getMachadoMatrix } from "./machado.js";
@@ -39,23 +39,24 @@ export const TRITANOPIA_LIVE_APPROXIMATION = [
 ];
 
 // Duplicado deliberado de la heurística de contenedor de dom-svg.js
-// (CONTAINER_CANDIDATES): ese módulo no puede modificarse en este sprint y
-// no exporta el resolutor por separado. El content script pasa el contenedor
-// ya resuelto por la extracción cuando existe; esta copia solo actúa si se
-// simula antes de extraer. Si cambia allí, debe cambiar aquí.
+// (CONTAINER_CANDIDATES): este módulo no importa el de extracción para
+// que la simulación pueda cargarse sola. El content script pasa el
+// contenedor ya resuelto por la extracción cuando existe; esta copia
+// solo actúa si se simula antes de extraer. Si cambia allí, debe
+// cambiar aquí.
 const CONTAINER_CANDIDATES = ["[data-dashboard]", "#dashboard", ".dashboard", "[data-reporte]"];
 
 // Estado del filtro activo (vive en el módulo, no en el DOM del sitio).
 let activeTarget = null;
 let previousInlineFilter = "";
-// Si el contenedor no tenia atributo style antes del filtro, al retirar
-// se elimina tambien el atributo vacio: restauracion exacta, sin restos.
+// Si el contenedor no tenía atributo style antes del filtro, al retirar
+// se elimina también el atributo vacío: restauración exacta, sin restos.
 let targetHadStyleAttribute = false;
-// Configuracion aplicada, para poder reportar el estado real (sprint 5).
+// Configuración aplicada, para poder reportar el estado real al panel.
 let activeConfig = null;
 
 /** Resuelve el contenedor del dashboard con la misma heurística del nivel 1. */
-export function resolveContainer(doc = document) {
+function resolveContainer(doc = document) {
   return CONTAINER_CANDIDATES.map((selector) => doc.querySelector(selector)).find(Boolean) || doc.body;
 }
 
@@ -129,7 +130,7 @@ export function applySimulationFilter(config, container = null, doc = document) 
   target.style.filter = "url(#" + FILTER_ID + ")";
 }
 
-/** Estado real del filtro en esta página (reconciliación, sprint 5). */
+/** Estado real del filtro en esta página, para la reconciliación con el panel. */
 export function getSimulationFilterState() {
   return activeTarget
     ? { active: true, config: activeConfig }

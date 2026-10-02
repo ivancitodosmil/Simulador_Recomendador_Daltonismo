@@ -1,13 +1,15 @@
 // ------------------------------------------------------------------
-// Sprint 4 · Catálogo local de esquemas de color accesibles, conforme
-// a la Tabla 16 de la tesis. Estructura estática embebida: sin
-// consultas externas (regla del proyecto: sin red en runtime).
-// Cada entrada registra los colores del esquema, su familia
-// (cualitativa o secuencial), el número de colores y los tipos de
-// deficiencia para los que existe evidencia publicada.
-// Las rampas secuenciales se almacenan SIEMPRE de oscuro a claro.
+// Catálogo local de esquemas de color accesibles (RF06), conforme a la
+// Tabla 16 de la tesis. Estructura estática embebida, sin consultas
+// externas (RNF02). Cada entrada registra los colores, la familia
+// (cualitativa o secuencial), el número de colores y las deficiencias
+// con evidencia publicada. Sprint 4.
 // ------------------------------------------------------------------
 
+/**
+ * Esquemas acreditados, en el orden en que los prueba la recomendación.
+ * Las rampas secuenciales se almacenan siempre de oscuro a claro.
+ */
 export const PALETTE_CATALOG = [
   {
     id: "okabe-ito",
