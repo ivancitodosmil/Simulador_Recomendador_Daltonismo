@@ -1,10 +1,13 @@
 // ------------------------------------------------------------------
 // Nivel 2 de extracción (RF01): muestreo de píxeles de elementos canvas
-// con getImageData, cuantización por corte mediano (median cut,
-// Heckbert 1982) y descarte de los tonos poco frecuentes que produce el
-// suavizado de bordes. Las funciones de muestreo y cuantización son
-// puras y las reutiliza captura.js (nivel 3). Sprint 1.
+// con getImageData y cuantización cromática (cuantizacion.js), que
+// conserva las series finas y separa fondos y ejes acromáticos. Recibe
+// los canvas de las zonas de gráficos, también los de shadow roots, y
+// devuelve los rectángulos de los que no pudo leer para que la captura
+// los recorte. Sprint 1; cuantización cromática desde la versión 1.0.0.
 // ------------------------------------------------------------------
+
+import { medianCut, quantizeImages, samplePixels } from "./cuantizacion.js";
 
 // Área mínima (px²) para considerar un canvas como gráfico y no como icono.
 const MIN_CANVAS_AREA = 4096;
@@ -19,105 +22,17 @@ const MAX_QUANTIZED_COLORS = 24;
 // considera producto del antialiasing.
 const MIN_TONE_SHARE = 0.01;
 
-/**
- * Muestrea los píxeles de un ImageData con paso constante y descarta los
- * casi transparentes. Los semitransparentes se componen sobre blanco como
- * criterio de extracción: el canvas es transparente por defecto y el color
- * percibido de un píxel semitransparente depende de la superficie que tenga
- * detrás, por lo que se compone sobre blanco en consistencia con el fondo
- * sintético que registra el nivel 1 cuando la página no declara uno propio.
- */
-export function samplePixels(imageData, maxSamples = MAX_SAMPLES_PER_CANVAS) {
-  const { data, width, height } = imageData;
-  const totalPixels = width * height;
-  let step = Math.max(1, Math.floor(totalPixels / maxSamples));
-  // Evita que el paso quede alineado con el ancho de fila (bandas verticales).
-  if (width > 1 && step > 1 && step % width === 0) step += 1;
-
-  const pixels = [];
-  for (let p = 0; p < totalPixels; p += step) {
-    const i = p * 4;
-    const alpha = data[i + 3];
-    if (alpha < 32) continue;
-    if (alpha < 255) {
-      const factor = alpha / 255;
-      pixels.push([
-        Math.round(data[i] * factor + 255 * (1 - factor)),
-        Math.round(data[i + 1] * factor + 255 * (1 - factor)),
-        Math.round(data[i + 2] * factor + 255 * (1 - factor))
-      ]);
-    } else {
-      pixels.push([data[i], data[i + 1], data[i + 2]]);
-    }
-  }
-  return pixels;
-}
-
-/** Canal con mayor rango dentro de una caja y el valor de ese rango. */
-function widestChannel(box) {
-  const min = [255, 255, 255];
-  const max = [0, 0, 0];
-  for (const pixel of box) {
-    for (let c = 0; c < 3; c += 1) {
-      if (pixel[c] < min[c]) min[c] = pixel[c];
-      if (pixel[c] > max[c]) max[c] = pixel[c];
-    }
-  }
-  const ranges = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
-  const channel = ranges.indexOf(Math.max(...ranges));
-  return { channel, range: ranges[channel] };
-}
+// El muestreo vive en cuantizacion.js; se reexporta por compatibilidad.
+export { samplePixels };
 
 /**
- * Corte mediano de Heckbert: divide repetidamente la caja con mayor rango
- * cromático por la mediana de su canal más ancho, hasta maxColors cajas.
- * Devuelve el color medio de cada caja con su número de muestras.
+ * Corte mediano de Heckbert (medianCut de cuantizacion.js) hasta
+ * maxColors cajas. La mediana puede partir por la mitad una zona de color
+ * uniforme y dejar varias cajas con el mismo promedio: se fusionan antes
+ * de devolver {rgb, count}.
  */
 export function medianCutQuantize(pixels, maxColors = MAX_QUANTIZED_COLORS) {
-  if (!pixels.length) return [];
-  let boxes = [pixels.slice()];
-
-  while (boxes.length < maxColors) {
-    let bestIndex = -1;
-    let bestChannel = 0;
-    let bestRange = 0;
-    boxes.forEach((box, index) => {
-      if (box.length < 2) return;
-      const { channel, range } = widestChannel(box);
-      if (range > bestRange) {
-        bestRange = range;
-        bestIndex = index;
-        bestChannel = channel;
-      }
-    });
-    // Ninguna caja divisible: todos los tonos ya son uniformes.
-    if (bestIndex === -1) break;
-
-    const box = boxes[bestIndex];
-    box.sort((a, b) => a[bestChannel] - b[bestChannel]);
-    const half = Math.floor(box.length / 2);
-    boxes.splice(bestIndex, 1, box.slice(0, half), box.slice(half));
-  }
-
-  const averaged = boxes.map((box) => {
-    const sum = [0, 0, 0];
-    for (const pixel of box) {
-      sum[0] += pixel[0];
-      sum[1] += pixel[1];
-      sum[2] += pixel[2];
-    }
-    return {
-      rgb: {
-        r: Math.round(sum[0] / box.length),
-        g: Math.round(sum[1] / box.length),
-        b: Math.round(sum[2] / box.length)
-      },
-      count: box.length
-    };
-  });
-
-  // La mediana puede partir por la mitad una zona de color uniforme y dejar
-  // varias cajas con el mismo promedio: se fusionan antes de devolver.
+  const averaged = medianCut(pixels, maxColors);
   const merged = [];
   for (const color of averaged) {
     const twin = merged.find(
@@ -155,19 +70,27 @@ export function discardRareTones(colors, totalSamples, minShare = MIN_TONE_SHARE
 }
 
 /**
- * Punto de entrada del nivel 2: recorre los canvas visibles del contenedor,
- * lee sus píxeles y devuelve entradas {rgb, weight, role} normalizadas para
- * la consolidación. Cuenta los canvas que no se pudieron leer (WebGL o
- * canvas contaminado por CORS) para que el orquestador decida el respaldo.
+ * Punto de entrada del nivel 2. Recibe la lista de canvas de las zonas de
+ * gráficos (también los de shadow roots) o, por compatibilidad, un nodo
+ * raíz del que tomar sus canvas. Lee sus píxeles y devuelve entradas
+ * {rgb, weight, role, inChart} normalizadas para la consolidación, y los
+ * rectángulos de los canvas que no se pudieron leer (WebGL o contaminado
+ * por CORS) para que el orquestador los capture recortados.
  */
-export function extractCanvasColors(root = document) {
-  const canvases = Array.from(root.querySelectorAll("canvas")).filter((canvas) => {
+export function extractCanvasColors(target = document) {
+  const candidates = Array.isArray(target) ? target : Array.from(target.querySelectorAll("canvas"));
+  const canvases = candidates.filter((canvas) => {
     const rect = canvas.getBoundingClientRect();
     return rect.width * rect.height >= MIN_CANVAS_AREA && canvas.width > 0 && canvas.height > 0;
   });
 
   const perCanvasResults = [];
+  const failedRects = [];
   let failed = 0;
+  const rectOf = (canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  };
 
   for (const canvas of canvases) {
     try {
@@ -175,6 +98,7 @@ export function extractCanvasColors(root = document) {
       if (!context) {
         // Contexto WebGL u otro: este nivel no puede leerlo.
         failed += 1;
+        failedRects.push(rectOf(canvas));
         continue;
       }
       // Se lee desde una copia propia creada con willReadFrequently: leer
@@ -187,27 +111,28 @@ export function extractCanvasColors(root = document) {
       const readContext = readCopy.getContext("2d", { willReadFrequently: true });
       readContext.drawImage(canvas, 0, 0);
       const imageData = readContext.getImageData(0, 0, canvas.width, canvas.height);
-      const pixels = samplePixels(imageData);
-      if (!pixels.length) continue;
-      const quantized = discardRareTones(medianCutQuantize(pixels), pixels.length);
-      perCanvasResults.push({ quantized, samples: pixels.length });
+      perCanvasResults.push({ imageData });
     } catch (error) {
       // SecurityError: canvas contaminado por contenido de otro origen.
       failed += 1;
+      failedRects.push(rectOf(canvas));
     }
   }
 
   const entries = [];
-  for (const { quantized, samples } of perCanvasResults) {
-    // El tono dominante de un gráfico suele ser su fondo; el resto, series.
-    const dominant = quantized.reduce((a, b) => (b.count > a.count ? b : a), quantized[0]);
-    for (const color of quantized) {
-      const share = color.count / samples;
-      const role = color === dominant && share > 0.3 ? "background" : "series";
+  // Canvas legibles en los que no hay nada pintado (todo transparente):
+  // gráficos sin datos todavía.
+  let empty = 0;
+  for (const { imageData } of perCanvasResults) {
+    // Cuantización cromática (la misma que la captura): conserva las series
+    // finas aunque ocupen poco y separa los acromáticos de fondo y ejes.
+    const quantized = quantizeImages([imageData], [MAX_SAMPLES_PER_CANVAS]);
+    if (!quantized.length) empty += 1;
+    for (const entry of quantized) {
       // El peso se reparte entre canvas para que el nivel sume como máximo 1.
-      entries.push({ rgb: color.rgb, weight: share / perCanvasResults.length, role });
+      entries.push({ ...entry, weight: entry.weight / perCanvasResults.length });
     }
   }
 
-  return { entries, canvasTotal: canvases.length, canvasFailed: failed };
+  return { entries, canvasTotal: canvases.length, canvasFailed: failed, canvasEmpty: empty, failedRects };
 }

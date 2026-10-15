@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Evolución mensual por país (visual en canvas)</title>
+  <!-- Visual con scripts dentro de un iframe normal: doce lineas de 1,5 px en un
+       canvas. Cada linea ocupa mucho menos del 1 % de la pantalla; la extension
+       debe conservarlas con el umbral relativo a los pixeles cromaticos. -->
+  <style>
+    body { margin: 0; background: #FFFFFF; font-family: "Segoe UI", system-ui, sans-serif; }
+    canvas { display: block; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <canvas id="lineas" width="560" height="300" role="img" aria-label="Evolución mensual por país"></canvas>
+  <script src="datos.js"></script>
+  <script>
+    (function () {
+      const canvas = document.getElementById("lineas");
+      const ctx = canvas.getContext("2d");
+      const margen = { sup: 16, der: 16, inf: 36, izq: 44 };
+      const ancho = canvas.width - margen.izq - margen.der;
+      const alto = canvas.height - margen.sup - margen.inf;
+      const series = PAISES.map((p, i) => serieMensual(i));
+      const maximo = Math.max.apply(null, series.flat());
+
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Ejes y cuadricula en gris claro (acromaticos).
+      ctx.strokeStyle = "#C9CFD6";
+      ctx.lineWidth = 1;
+      for (let k = 0; k <= 4; k += 1) {
+        const y = margen.sup + alto - (alto * k) / 4;
+        ctx.beginPath();
+        ctx.moveTo(margen.izq, y);
+        ctx.lineTo(margen.izq + ancho, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#5A6572";
+      ctx.font = "11px Segoe UI, system-ui, sans-serif";
+      MESES.forEach((m, j) => {
+        const x = margen.izq + (ancho * j) / (MESES.length - 1);
+        ctx.fillText(m, x - 10, canvas.height - 14);
+      });
+
+      // Doce lineas finas, una por pais.
+      series.forEach((valores, i) => {
+        ctx.strokeStyle = COLORES_LINEAS[i];
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        valores.forEach((v, j) => {
+          const x = margen.izq + (ancho * j) / (MESES.length - 1);
+          const y = margen.sup + alto - (alto * v) / maximo;
+          if (j === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      });
+    })();
+  </script>
+</body>
+</html>

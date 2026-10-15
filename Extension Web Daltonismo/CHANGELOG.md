@@ -3,6 +3,280 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Las versiones corresponden a los sprints del trabajo de titulación.
 
+## [1.0.0] — 2026-10-09
+
+Versión final del prototipo. Corrige la extracción en plataformas reales
+(Power BI, Looker Studio, Tableau Public), que el Sprint 1 solo había
+validado sobre el banco de pruebas.
+
+### Corregido
+- Mensajes cuando no hay colores de datos, según lo que haya en la
+  página: sin zonas de gráficos (ni svg con marcas, ni canvas, ni
+  imágenes grandes), «Esta página no tiene gráficos que evaluar. El
+  contraste de textos y bordes sigue disponible en Contraste»; con zonas
+  de gráficos vacías (svg grandes sin marcas, canvas en blanco o
+  contenedores de gráfico con «Todavía no hay datos para mostrar»), «Los
+  gráficos de esta página no muestran datos todavía. Carga datos o cambia
+  el filtro y vuelve a evaluar»; «No se detectaron colores de datos en
+  los gráficos…» queda solo para gráficos con marcas sin ningún color
+  cromático de datos. Igual en el panel y en el reporte. El content script
+  resume las zonas (con marcas, vacías, imágenes) y el nivel 2 cuenta los
+  canvas en blanco. La captura de toda el área visible queda solo para
+  cuando el nivel 1 no leyó ningún color: sin zonas de gráficos no se
+  captura la página, porque convertía en «series» el color de la marca
+  en textos y botones.
+- Falso «Cumple» con series sin par de contraste: los colores de canvas y
+  de captura no tienen elemento, no entraban en ningún par 1.4.11 y «0
+  fallos» se tomaba como cumplimiento (un dashboard exportado desde Figma
+  con cinco series por debajo de 3:1 salía como «Cumple»). Ahora cada
+  serie muestreada sin par propio recibe un par 1.4.11 aproximado contra
+  el fondo dominante de su zona (canvas: fondo CSS efectivo del canvas;
+  captura: acromático dominante del recorte) o, en su defecto, contra el
+  fondo de página; esas filas se marcan «aproximado» en Contraste y en el
+  reporte, y la tarjeta «Cumple» lo declara. «Cumple» exige que el
+  contraste de todas las series consideradas se haya evaluado y pase: si
+  alguna queda sin evaluar nunca hay «Cumple», sino la recomendación
+  normal con el aviso «No se pudo evaluar el contraste de N series
+  consideradas». Con las series por captura, nota junto a las casillas:
+  «En una imagen la extensión no distingue gráficos de iconos: desmarca
+  los colores que no sean series de datos». Con una sola serie que cumple
+  3:1 se muestra «Cumple» con «Una sola serie: no hay pares que
+  comparar»; si incumple o no se pudo evaluar, «Sin recomendación» con
+  la causa; con cero series sigue «Sin colores de datos». Consecuencia en
+  el banco: panel-conforme (Okabe-Ito completo en canvas) ya no cumple,
+  porque su amarillo, ámbar y celeste quedan bajo 3:1 sobre blanco.
+- La extracción lee siempre los colores reales: el content script
+  suspende el filtro de simulación y la previsualización en todos los
+  marcos antes de leer el DOM y los canvas y antes de la captura, espera
+  dos cuadros de animación y los restaura exactamente después. Evaluar
+  con una deficiencia activa da la misma paleta que con «Ninguna».
+- El content script se inyecta en todos los marcos de la pestaña y el
+  service worker fusiona la paleta y el contraste de cada uno; los
+  iframes en los que no se puede inyectar (sandbox, otro origen sin
+  permiso) se capturan recortados a su rectángulo en vez de perderse en
+  silencio.
+- El nivel 1 empieza por las zonas de gráficos (svg con marcas, canvas e
+  iframes, también dentro de shadow roots abiertos) y sigue hacia fuera
+  desde la región que comparten; si se alcanza el tope de 5000 nodos por
+  marco, el panel y el reporte lo avisan.
+- Quedan fuera del recorrido la interfaz de la aplicación (navegación,
+  barra superior, buscadores, menús, barras de herramientas y controles
+  de formulario), los iconos (svg menores de 32 px, con `use` o dentro
+  de botones, menús y pestañas) y lo oculto (display, visibility,
+  opacity, tamaño cero, fuera de la página, texto solo para lectores
+  recortado y regiones en vivo sin texto visible).
+- La captura se recorta a las zonas de gráficos y se cuantiza con
+  separación cromática: los colores exactos repetidos actúan como
+  semillas, el umbral es relativo a los píxeles cromáticos (con un mínimo
+  de muestras), los tonos a menos de ΔE00 3 se fusionan, el suavizado de
+  bordes se pliega en su color puro según la adyacencia real de los
+  píxeles y las franjas subpíxel del texto se descartan. El nivel 2
+  (canvas) usa la misma cuantización, así que las líneas finas
+  sobreviven aunque ocupen menos del 1 % de la pantalla.
+- El nivel 3 se activa también cuando los niveles 1 y 2 no encuentran
+  ningún color cromático de datos en las zonas de gráficos.
+- Marcado por defecto de las series consideradas: solo los colores
+  cromáticos dentro de las zonas de gráficos; quedan desmarcados los
+  fondos, los acromáticos (blanco, casi blancos, grises) y los
+  estructurales.
+- Sin colores de datos la recomendación ya no dice «Cumple sin
+  reemplazo»: muestra «No se detectaron colores de datos en los
+  gráficos. Revisa que el dashboard esté visible o usa la captura.»,
+  también en el reporte.
+- Cuando la página de la pestaña cambia (recarga, navegación o cambio de
+  ruta sin recarga: pushState, replaceState con otra dirección o cambio
+  de fragmento), la simulación vuelve a «Ninguna», se retiran el filtro,
+  la capa por captura y la previsualización si seguían puestos, se
+  descarta la evaluación y el panel lo avisa con «La página cambió: se
+  restableció «Ninguna» y se descartó la evaluación anterior.». Solo
+  afecta a esa pestaña. Al abrir el panel o volver a la pestaña se
+  comprueba con la página si el filtro sigue realmente aplicado y, si
+  no, el selector queda en «Ninguna».
+- La previsualización solo se aplica cuando el usuario enciende el
+  interruptor; ningún render la reaplica. Cambiar el tipo de
+  deficiencia con la previsualización activa la retira en todos los
+  marcos, deja el interruptor apagado y lo avisa («Cambiaste a <tipo>:
+  se retiró la previsualización…»); mover la severidad no la toca; tras
+  «Volver a evaluar», «Limpiar todo» o un cambio de página el
+  interruptor refleja lo que la página tiene de verdad.
+- Nunca se lee la página con la previsualización puesta: cada elemento
+  recoloreado lleva una marca con sus valores previos, de modo que
+  cualquier instancia del content script (también tras recargar la
+  extensión) la detecta en el estado de la página y la retira antes de
+  extraer; la lectura comprueba al final que no quede ningún elemento
+  marcado. Antes, la memoria de lo recoloreado vivía solo en la
+  instancia que lo aplicó y una evaluación posterior podía leer la
+  propuesta como si fuera la paleta original.
+- El interruptor de previsualización se deshabilita cuando ninguna
+  serie considerada tiene elementos recoloreables (gráficos en canvas,
+  WebGL, imagen o simulación por captura), con la nota «No disponible
+  en esta página: los gráficos están dibujados en canvas o vienen de una
+  captura. La propuesta solo se puede ver en el panel y en el
+  reporte.»; se recalcula al cambiar las series consideradas o la
+  familia. Con algunos recoloreables y otros en canvas sigue disponible.
+
+### Añadido
+- Copiar colores y descargar el tema de Power BI desde la tabla de
+  recomendación (maqueta de copiar). Cada hex propuesto es un botón
+  «Copiar #…» (mono, fondo transparente, muestra a la izquierda) que
+  copia solo el hex en mayúsculas y muestra «Copiado» en `--correcto`
+  durante dos segundos; la palabra «Copiar» aparece al pasar o enfocar
+  sin que la tabla salte. «Copiar todos» (botón tonal de 34 px) copia
+  los colores propuestos uno por línea en el orden de la tabla y dice
+  «Copiados N colores» o «Copiado 1 color». «Descargar tema de Power BI
+  (.json)» genera `tema-accesible-powerbi.json` con solo `name` y
+  `dataColors` (Blob y `<a download>`, sin permiso de descargas) y dice
+  «Tema de Power BI descargado»; debajo, la nota de importación. Un solo
+  estado temporal a la vez (otro clic lo reinicia), anuncios por
+  `aria-live`, errores en la región de estado del bloque («No se pudo
+  copiar…», «No se pudo descargar el tema»). El mismo bloque, titulado
+  «Paleta accesible», acompaña a la tarjeta «Cumple» con la paleta
+  original, también con una sola serie y en familias secuenciales. El
+  reporte PDF no cambia.
+- Banco de pruebas `Pruebas/panel-cumple/`: dashboard de ventas en SVG a
+  mano (cuatro indicadores de texto, barras agrupadas por trimestre,
+  líneas mensuales de 2,5 px con marcadores y dona con `padAngle` sin
+  bordes) con cuatro series de Okabe-Ito que superan 3:1 sobre blanco
+  (`#0072B2`, `#D55E00`, `#009E73`, `#CC79A7`), textos `#1F2933` y
+  `#4B5563`, ejes y bordes `#767676` (4,54:1), tabla con los datos y
+  `dashboard.png` capturado a 1440 px: el caso que cumple bajo las tres
+  deficiencias (ΔE00 mínimo 12,26 protanopía, 16,11 deuteranopía, 10,50
+  tritanopía con Brettel), también por captura con contraste aproximado.
+- Pruebas unitarias del contraste aproximado en
+  `herramientas/pruebas-extraccion.mjs` (fila por serie muestreada,
+  fondo de canvas y de captura, fondo de respaldo, filas propias
+  intactas).
+- Simulación por captura cuando el filtro CSS no puede actuar: documento
+  de imagen, imagen que ocupa la mayor parte de la vista, canvas WebGL
+  (como el lienzo de Figma) o página que queda en blanco al filtrar
+  (comprobado con una captura reducida antes y después). Se captura la
+  pestaña con la capa oculta, se simula píxel a píxel con las mismas
+  matrices de Machado (2009) y el método de Brettel (1997) del cálculo
+  (`src/core/simulacion/imagen.js`) y se muestra como capa fija encima
+  de la página, sin capturar el puntero; al cambiar la severidad se
+  recalcula desde la captura guardada y al desplazarse, redimensionar o
+  soltar el puntero se vuelve a capturar con retardo. El panel lo indica
+  con «Simulación por captura: la vista simulada es una imagen de la
+  pantalla y se actualiza al desplazarte.». La extracción en esos casos
+  usa la captura (nivel 3) con el aviso de evaluación aproximada.
+- Paneles `panel-imagen` (dashboard como PNG, también abrible como
+  documento de imagen) y `panel-webgl` (barras en un canvas WebGL) del
+  banco de pruebas.
+- `herramientas/pruebas-simulacion.mjs`: pruebas unitarias de la
+  simulación píxel a píxel (idéntica a las funciones color a color),
+  de la detección de captura uniforme y de la decisión de modo.
+- Módulos `src/core/extraccion/cuantizacion.js` (cuantización cromática)
+  y `src/core/extraccion/marcos.js` (composición de marcos y recortes a
+  capturar), con `mergeFramePalettes` y `mergeContrastResults`.
+- Panel `Pruebas/panel-plataforma` del banco de pruebas: armazón de
+  plataforma de informes, más de 5000 nodos, aviso solo para lectores,
+  iframe aislado, iframe con canvas y shadow root.
+- `herramientas/pruebas-extraccion.mjs`: pruebas unitarias de recorte,
+  umbral cromático, plegado por adyacencia y composición de marcos.
+- Avisos nuevos en el panel y en el reporte: recorte del recorrido y
+  resultado sin colores de datos; la línea de extracción indica el
+  número de marcos leídos.
+
+### Cambiado
+- Mensajes de estado por tarjeta y sin restos: los de la simulación
+  (aplicada o retirada, cambio de página) van en «Simulación» y los de la
+  evaluación (terminada o descartada, previsualización, reporte, errores)
+  en «Evaluación de accesibilidad»; solo hay uno a la vez y cualquier
+  acción del usuario (cambiar deficiencia, mover la severidad, evaluar,
+  previsualizar, cambiar familia, series o umbral, exportar, limpiar) lo
+  borra antes, así nunca queda un mensaje que contradiga el estado
+  actual. «Limpiar todo» deja «Todo limpio: simulación, previsualización
+  y evaluación retiradas.», que desaparece con la siguiente acción. Tras
+  evaluar se oculta también «Analiza los gráficos visibles de esta
+  pestaña:» junto con la lista; al limpiar vuelven los dos.
+- Evaluación separada de la simulación según la guía del panel
+  (`Pruebas/Docs/maqueta-panel.html`, actualizada con la tarjeta de
+  evaluación, el selector con lista, los botones y la tarjeta «Cumple»;
+  en Docs solo quedan la guía del panel y la del reporte). La tarjeta
+  «Simulación» conserva el selector, la
+  severidad y su nota, y pierde el botón. Debajo, la tarjeta nueva
+  «Evaluación de accesibilidad» explica qué se analiza («Analiza los
+  gráficos visibles de esta pestaña:») con una lista de definiciones de
+  tres filas separadas por líneas `--borde-suave`, rótulo semibold en una
+  columna de 118 px que crece si hace falta y descripción secundaria
+  (Contraste: WCAG 2.1, criterios 1.4.3 y 1.4.11; Distinguibilidad:
+  series bajo la deficiencia elegida (ΔE00); Recomendación: paleta
+  accesible equivalente), el botón principal «Evaluar accesibilidad»
+  (antes «Extraer paleta y evaluar») y los mensajes de estado debajo.
+  Tras evaluar, el botón pasa a «Volver a evaluar» en tonal y la lista se
+  oculta; al limpiar vuelve el estado inicial. Encabezado, «Limpiar todo»
+  y los resultados no cambian.
+- Controles del panel según la maqueta de controles (integrada en la guía
+  del panel). Los
+  selectores «Tipo de deficiencia» y «Familia de la paleta» son campos
+  rellenos: fondo `--campo` con borde de 1 px `--borde` en reposo (≥ 3:1
+  sobre la tarjeta y sobre el campo en los dos temas), radio 10 px, alto
+  mínimo 58 px, rótulo de 12 px y valor de 16 px semibold dentro, flecha
+  en un tramo de 48 px separado por una línea `--borde`; borde `--texto`
+  en hover; borde `--acento`, fondo `--superficie` y anillo de 4 px al
+  22 % con el foco o la lista abierta. El select nativo sigue
+  cubriendo el campo (teclado y lector de pantalla iguales); con el
+  select personalizable de Chrome (`appearance: base-select`, dentro de
+  `@supports`) la lista lleva fondo `--superficie`, borde, radio 10 px,
+  padding 6 px y sombra `--sombra-lista`, opciones con radio 7 px, nombre
+  de 15 px semibold y descripción de 12,5 px (`data-desc`), hover
+  `--superficie-2` y elegida `--acento-suave` con el nombre en
+  `--acento`; «Ninguna» va primero, separada por `<hr>`. Sin soporte
+  queda la lista nativa.
+- Botones de 48 px, radio 10 px y texto de 15 px semibold, sin iconos:
+  principal (`--acento`, hover `--acento-hover`) para «Evaluar
+  accesibilidad» y «Exportar PDF»; tonal (`--acento-suave`, texto `--acento`,
+  hover `--acento-suave-hover`) para «Volver a evaluar»; borrar (texto
+  `--borrar` con borde al 45 %, hover `--borrar-suave`) para «Limpiar
+  todo». Foco con teclado: outline de 2 px `--acento` a 3 px; al
+  presionar bajan 1 px salvo con `prefers-reduced-motion`. Pie en
+  proporción 1,5 a 1; sin evaluación «Limpiar todo» ocupa todo el ancho.
+- Tokens nuevos en los dos temas: `--campo` (#EEF2F7 / #26344B),
+  `--acento-hover` (#0F4C86 / #A8C7FA), `--acento-suave` (#E3EDF8 /
+  #22385A), `--acento-suave-hover` (#D2E2F3 / #2A4570), `--borrar`
+  (#9A2D10 / #F4A48A), `--borrar-suave` (#FBE9E3 / #3A2526) y
+  `--sombra-lista`. El rojo del botón no sustituye a `--error`: como
+  token global dejaba aviso y error a ΔE00 6,2 bajo deuteranopía, por
+  debajo del mínimo 10 que exige la auditoría para las pastillas. La
+  auditoría de tokens comprueba también los pares nuevos y el rastreo
+  admite el anillo del campo, la sombra de la lista y la línea de la
+  flecha.
+- Cuando la paleta considerada ya cumple, el panel y la sección 5 del
+  reporte muestran la tarjeta «Cumple» de la maqueta de cierre en
+  lugar del título «Cumple sin reemplazo» y su párrafo: sello «Cumple»,
+  contexto «<deficiencia> (severidad máxima)», título «Tu paleta ya es
+  accesible», texto con el número de series, bandas en visión típica y
+  bajo la deficiencia a severidad máxima (mismo orden), tres cifras
+  (ΔE00 mínimo, fallos de contraste entre series, series evaluadas) y
+  la regla «Par más cercano frente al umbral» de 0 a 50 con la zona
+  bajo el umbral, el punto en el ΔE00 mínimo y el margen en texto. Solo
+  tokens, `role="status"` en la tarjeta, regla con
+  `aria-hidden`, sin iconos ni animaciones, contraste ≥ 4,5:1 en texto y
+  ≥ 3:1 en gráficos en los dos temas. El aviso de incumplimientos fuera
+  del conjunto de series sigue debajo sin cambios; el caso con
+  reemplazo no cambia.
+- Tres tokens semánticos de éxito en los dos temas, `--exito-fondo`,
+  `--exito-borde` y `--exito-texto` (#F3FAF3, #CFE6D0 y #2D6830 en
+  claro; #1A3029, #2C4A3F y #9AD6A4 en Azul noche), también en la copia
+  del tema claro del reporte. La tarjeta «Cumple» los usa: fondo y
+  borde de la tarjeta, sello (fondo en texto de éxito y letra en fondo
+  de éxito), cifras, margen, pista y punto de la regla (con anillo en
+  fondo de éxito) y borde de las cajas de cifras. Título, texto,
+  bandas, zona del umbral y el aviso de abajo no cambian.
+- «Limpiar todo» pasa de enlace subrayado a botón neutro: fondo de
+  superficie, borde `--borde` (≥ 3:1 sobre el fondo del panel) y texto
+  en el color normal (≥ 4,5:1), misma altura y radio que «Exportar PDF»
+  y «Volver a evaluar», con hover y foco visibles y los mismos tokens en
+  Azul noche. Sin evaluación ocupa todo el ancho; con evaluación va
+  junto a «Exportar PDF», los dos del mismo tamaño.
+- `minimum_chrome_version` pasa a 117 (`chrome.runtime.getFrameId`).
+- Se retira el permiso `activeTab`: era redundante con
+  `host_permissions <all_urls>`, que ya cubre la inyección del content
+  script y la captura de la pestaña en cualquier sitio.
+- Permiso `webNavigation` para detectar los cambios de página.
+- `web_accessible_resources` incluye `cuantizacion.js`, `brettel.js` e
+  `imagen.js`.
+
 ## [0.6.10] — 2026-10-02
 
 ### Corregido

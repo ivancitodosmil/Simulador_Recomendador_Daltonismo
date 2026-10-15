@@ -48,6 +48,26 @@ const SCALE_MAX = 50;
 const CONTRAST_MAX = 21;
 const CONTRAST_AXIS = [1, 3, 4.5, 7, 21];
 
+// Resultado honesto cuando ninguna serie es un color de datos (mismos
+// textos que el panel), según la causa: sin gráficos, gráficos vacíos o
+// gráficos con marcas sin color cromático de datos.
+const NO_DATA_COLORS_TEXT =
+  "No se detectaron colores de datos en los gráficos. Revisa que el dashboard esté visible o usa la captura.";
+const NO_DATA_TEXTS = {
+  "no-charts": {
+    label: "Sin gráficos",
+    detail: "ninguna zona de gráficos en la página",
+    text: "Esta página no tiene gráficos que evaluar. El contraste de textos y bordes sigue disponible en Contraste."
+  },
+  "empty-charts": {
+    label: "Gráficos sin datos",
+    detail: "zonas de gráficos sin marcas de datos",
+    text: "Los gráficos de esta página no muestran datos todavía. Carga datos o cambia el filtro y vuelve a evaluar."
+  },
+  "no-data-colors": { label: "Sin colores de datos", detail: "ninguna serie cromática en los gráficos", text: NO_DATA_COLORS_TEXT }
+};
+const noDataEntry = (data) => NO_DATA_TEXTS[data.noDataKind] || NO_DATA_TEXTS["no-data-colors"];
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -131,9 +151,12 @@ function contrastRow(row, kind) {
     ? '<div class="aa" aria-hidden="true" style="color:' + escapeHtml(row.foregroundHex) + ";background:" + escapeHtml(row.backgroundHex) + '">Aa</div>'
     : '<div class="obj" aria-hidden="true" style="background:' + escapeHtml(row.backgroundHex) + '"><i style="background:' +
       escapeHtml(row.foregroundHex) + (row.ratio < 1.3 ? ";outline:1px dashed var(--borde)" : "") + '"></i></div>';
-  const parts = [row.count + (row.count === 1 ? " elemento" : " elementos")];
+  // Par aproximado: color muestreado sin elemento, comparado con el fondo dominante.
+  const parts = row.approximate
+    ? ["aproximado: sin elemento, comparado con el fondo dominante" + (row.source === "capture" ? " de la captura" : " del canvas")]
+    : [row.count + (row.count === 1 ? " elemento" : " elementos")];
   if (row.largeText) parts.push("texto grande, umbral " + num(row.threshold, 1) + ":1");
-  if (row.examples && row.examples.length) parts.push(row.examples.slice(0, 3).join(", "));
+  if (!row.approximate && row.examples && row.examples.length) parts.push(row.examples.slice(0, 3).join(", "));
   return "<tr><td>" + sample + "</td>" +
     '<td><span class="mono">' + escapeHtml(row.foregroundHex) + '</span> <span class="sec">sobre</span> <span class="mono">' +
     escapeHtml(row.backgroundHex) + '</span><br><span class="sec detalle">' + escapeHtml(parts.join(" · ")) + "</span></td>" +
@@ -195,6 +218,51 @@ function conflictCard(pair, threshold, simulationLabel, hasSimulation) {
     pill("ko", "Confundible") + "</div>" + chips + scale + '<div class="cifras">' + figures + "</div></div>";
 }
 
+/**
+ * Tarjeta «Cumple sin reemplazo» (misma maqueta que el panel,
+ * diseño de la maqueta de cierre, v5): sello, contexto, título, texto,
+ * bandas típica y simulada a severidad máxima, tres cifras y la regla del
+ * par más cercano frente al umbral, de 0 a 50.
+ */
+function complianceCard(rec, considered, simulationTitle) {
+  const count = considered.length;
+  const threshold = rec.threshold;
+  // Una sola serie: sin pares que comparar, sin ΔE00 ni regla.
+  const single = rec.singleSeries === true || rec.minDelta === null;
+  const approximate = rec.contrastApproximate || 0;
+  const margin = single ? 0 : rec.minDelta - threshold;
+  const percent = (value) => (Math.min(value, SCALE_MAX) / SCALE_MAX) * 100 + "%";
+  const tile = (value, text) => '<div class="cifra"><span class="v mono">' + value + '</span><span class="e">' + text + "</span></div>";
+  const lead = single
+    ? "Una sola serie: no hay pares que comparar. Su contraste contra el fondo cumple 3:1 y no hace falta cambiar colores."
+    : "Las " + count + " series se distinguen entre sí y ninguno de sus pares falla el contraste. No hace falta cambiar colores.";
+  const note = approximate > 0
+    ? '<p class="nota-cumple">Contraste aproximado: ' + (approximate === 1 ? "1 serie sin elemento se comparó" : approximate + " series sin elemento se compararon") + " con el fondo dominante.</p>"
+    : "";
+  const ruler = single ? "" :
+    '<div class="margen"><div class="tit"><span>Par más cercano frente al umbral ' + num(threshold, 1) + '</span><b class="mono">' + (margin >= 0 ? "+" : "") + num(margin) + "</b></div>" +
+    '<div class="regla" aria-hidden="true"><div class="zona" style="width:' + percent(threshold) + '"></div><div class="punto" style="left:' + percent(rec.minDelta) + '"></div></div>' +
+    '<div class="eje mono" aria-hidden="true"><span style="left:0">0</span><span style="left:' + percent(threshold) + '">' + num(threshold, Number.isInteger(threshold) ? 0 : 1) +
+    '</span><span style="left:100%">' + SCALE_MAX + "</span></div></div>";
+  return '<div class="cumple" role="status">' +
+    '<div class="cabecera"><span class="sello">Cumple</span><span class="contexto">' + escapeHtml(simulationTitle) + " (severidad máxima)</span></div>" +
+    '<p class="titulo">Tu paleta ya es accesible</p>' +
+    '<p class="lead">' + lead + "</p>" +
+    '<div class="bandas-cumple"><span>Visión típica</span>' + band(considered.map((s) => s.hex)) +
+    "<span>" + escapeHtml(simulationTitle) + "</span>" + band(considered.map((s) => s.simulatedMaxHex || s.hex)) + "</div>" +
+    '<div class="cifras-cumple">' + tile(single ? "—" : num(rec.minDelta), "ΔE00 mínimo") + tile("0", "fallos de contraste") +
+    tile(String(count), count === 1 ? "serie evaluada" : "series evaluadas") + "</div>" +
+    note + ruler + "</div>";
+}
+
+/** Aviso de la sección 5 cuando alguna serie considerada quedó sin contraste evaluado. */
+function unevaluatedNotice(rec) {
+  const count = rec && rec.unevaluatedSeries ? rec.unevaluatedSeries : 0;
+  if (!count) return "";
+  return '<p class="aviso"><b>Aviso</b> No se pudo evaluar el contraste de ' + count + (count === 1 ? " serie considerada" : " series consideradas") +
+    " (sin elemento ni fondo conocido): no se puede afirmar que la paleta cumpla.</p>";
+}
+
 /** Sección 5 según el desenlace. */
 function recommendationSection(data, considered, simulationLabel) {
   const rec = data.recommendation;
@@ -204,12 +272,18 @@ function recommendationSection(data, considered, simulationLabel) {
   const summaryLine = '<div class="fila-et"><span>Familia indicada: ' + familyLabel + "</span><span>" + considered.length + " de " + total +
     " series consideradas</span></div>";
 
+  if (data.noDataColors) {
+    return '<p class="sin-datos">' + escapeHtml(noDataEntry(data).text) + "</p>" + summaryLine;
+  }
   if (meta.simulationType === "none") {
     const rows = (data.overview || []).map((item) => {
       let word = "Sin datos";
       let kind = "neutra";
       let detail = "se necesitan al menos dos series consideradas";
-      if (item.outcome === "compliant") { word = "Cumple"; kind = "ok"; detail = "ΔE00 mínimo " + num(item.minDelta) + " sin reemplazo"; }
+      if (item.outcome === "compliant") {
+        word = "Cumple"; kind = "ok";
+        detail = item.minDelta === null ? "una sola serie: sin pares que comparar" : "ΔE00 mínimo " + num(item.minDelta) + " sin reemplazo";
+      }
       else if (item.outcome === "proposal") { word = "Propuesta"; kind = "neutra"; detail = "esquema " + item.schemeName; }
       else if (item.outcome === "redesign") {
         word = "Rediseño"; kind = "aviso";
@@ -224,18 +298,24 @@ function recommendationSection(data, considered, simulationLabel) {
     return '<p class="sin-datos">No se generó recomendación.</p>' + summaryLine;
   }
   if (rec.outcome === "insufficient-series") {
-    return '<div class="rec-cab"><div><div class="esq">Series insuficientes</div><p class="por">Se necesitan al menos dos series consideradas para recomendar una paleta.</p></div></div>' + summaryLine;
+    // Una sola serie que incumple o sin evaluar: sin recomendación, con la causa.
+    const text = rec.singleSeries
+      ? (rec.unevaluatedSeries
+        ? "Una sola serie: no hay pares que comparar y no se pudo evaluar su contraste contra el fondo."
+        : "Una sola serie: no hay pares que comparar; su contraste contra el fondo incumple 3:1" + (typeof rec.ratio === "number" ? " (" + num(rec.ratio) + ":1)" : "") + ", ver la sección 3.")
+      : "Se necesitan al menos dos series consideradas para recomendar una paleta.";
+    return '<div class="rec-cab"><div><div class="esq">' + (rec.singleSeries ? "Sin recomendación" : "Series insuficientes") + '</div><p class="por">' + escapeHtml(text) + "</p></div></div>" +
+      unevaluatedNotice(rec) + summaryLine;
   }
   if (rec.outcome === "compliant") {
-    return '<div class="rec-cab"><div><div class="esq">Cumple sin reemplazo</div><p class="por">La paleta de series considerada supera el contraste evaluado y la distinguibilidad bajo ' +
-      escapeHtml(simulationLabel) + " a severidad máxima: ΔE00 mínimo " + num(rec.minDelta) + " con umbral " + num(rec.threshold, 1) + ".</p></div>" +
-      '<div class="kpis"><div><b class="mono">' + num(rec.minDelta) + "</b>ΔE00 mínimo</div></div></div>" + summaryLine;
+    return complianceCard(rec, considered, capitalize(simulationLabel)) + summaryLine;
   }
   if (rec.outcome === "redesign") {
     const reason = rec.exhausted
       ? "Ningún esquema acreditado superó la revalidación con " + rec.seriesCount + " series (se probaron " + (rec.attempts || []).length + ")."
       : "El dashboard tiene " + rec.seriesCount + " series y el mayor esquema acreditado para " + simulationLabel + " dispone de " + rec.maxAvailable + " colores.";
     return '<div class="rec-cab"><div><div class="esq">Rediseño recomendado</div><p class="por">' + escapeHtml(reason) + "</p></div></div>" +
+      unevaluatedNotice(rec) +
       '<p class="aviso"><b>Aviso</b> Se recomienda reducir series, agrupar categorías o reforzar con etiquetas y formas.</p>' + summaryLine;
   }
   const mapping = rec.mapping;
@@ -248,7 +328,8 @@ function recommendationSection(data, considered, simulationLabel) {
     '<div class="kpis"><div><b>' + rec.revalidation.iterations + "</b>esquemas probados</div><div><b>" + rec.revalidation.swaps +
     '</b>sustituciones</div><div><b class="mono">' + num(rec.revalidation.minDelta) + "</b>ΔE00 mínimo</div></div></div>" +
     '<div class="antes-despues">' + columns + "</div>" +
-    '<div class="fila-et"><span>Arriba: color original · Abajo: color propuesto</span><span>' + considered.length + " de " + total + " series consideradas</span></div>";
+    '<div class="fila-et"><span>Arriba: color original · Abajo: color propuesto</span><span>' + considered.length + " de " + total + " series consideradas</span></div>" +
+    unevaluatedNotice(rec);
 }
 
 /** Párrafo de resumen de la sección 1, redactado con reglas a partir de los resultados. */
@@ -273,13 +354,17 @@ function summaryParagraph(data, failingText, failingGraphics, conflicts, hasSimu
     sentences.push("Ningún par de series queda por debajo del umbral" + (hasSimulation ? " bajo " + simulationLabel + "." : " en visión típica."));
   }
   const rec = data.recommendation;
-  if (!hasSimulation) {
+  if (data.noDataColors) {
+    sentences.push(noDataEntry(data).text);
+  } else if (!hasSimulation) {
     sentences.push("El apartado 5 resume el desenlace de la recomendación bajo las tres deficiencias.");
   } else if (rec && rec.outcome === "proposal") {
     sentences.push("La propuesta del apartado 5 (" + rec.scheme.name + ") sustituye las " + rec.mapping.length +
       " series consideradas con ΔE00 mínimo " + num(rec.revalidation.minDelta) + ".");
   } else if (rec && rec.outcome === "compliant") {
-    sentences.push("La paleta de series considerada cumple; el apartado 5 no propone reemplazo.");
+    sentences.push(rec.minDelta === null
+      ? "La única serie considerada cumple el contraste; el apartado 5 no propone reemplazo."
+      : "La paleta de series considerada cumple; el apartado 5 no propone reemplazo.");
   } else if (rec && rec.outcome === "redesign") {
     sentences.push("El apartado 5 recomienda rediseñar: " + (rec.exhausted
       ? "ningún esquema acreditado superó la revalidación."
@@ -317,12 +402,15 @@ export function renderReportBody(data) {
 
   // Tarjeta de recomendación del veredicto.
   let recCard;
-  if (!hasSimulation) {
+  if (data.noDataColors) {
+    const entry = noDataEntry(data);
+    recCard = '<span class="esq">' + entry.label + '</span><span class="t">' + entry.detail + "</span>";
+  } else if (!hasSimulation) {
     recCard = '<span class="esq">Tres deficiencias</span><span class="t">resumen en el apartado 5</span>';
   } else if (rec && rec.outcome === "proposal") {
     recCard = '<span class="esq">' + escapeHtml(rec.scheme.name) + '</span><span class="t">propuesta validada, ΔE00 mínimo ' + num(rec.revalidation.minDelta) + "</span>";
   } else if (rec && rec.outcome === "compliant") {
-    recCard = '<span class="esq">Cumple</span><span class="t">sin reemplazo, ΔE00 mínimo ' + num(rec.minDelta) + "</span>";
+    recCard = '<span class="esq">Cumple</span><span class="t">' + (rec.minDelta === null ? "sin reemplazo, una sola serie" : "sin reemplazo, ΔE00 mínimo " + num(rec.minDelta)) + "</span>";
   } else if (rec && rec.outcome === "redesign") {
     recCard = '<span class="esq">Rediseño</span><span class="t">' + (rec.exhausted ? "ningún esquema superó la revalidación" : rec.seriesCount + " series frente a " + rec.maxAvailable + " disponibles") + "</span>";
   } else {
@@ -349,7 +437,10 @@ export function renderReportBody(data) {
   // Avisos de la sección 6: solo los que aplican.
   const notices = [];
   if (data.warnings.approximate) {
-    notices.push("Evaluación aproximada: parte de la paleta proviene de la captura de pantalla (nivel 3) y perdió la relación color-elemento; el contraste solo cubre los colores con elemento identificado.");
+    notices.push("Evaluación aproximada: parte de la paleta proviene de la captura de pantalla (nivel 3) y perdió la relación color-elemento; sus colores de serie se compararon con el fondo dominante de la captura (contraste aproximado, marcado en la sección 3).");
+  }
+  if (data.warnings.truncated) {
+    notices.push("La página tiene más elementos de los que se analizan (tope de 5000 por marco): las zonas de gráficos se analizaron primero y parte del resto de la página puede faltar.");
   }
   if (data.warnings.selectedWithoutElements > 0) {
     const k = data.warnings.selectedWithoutElements;
@@ -438,6 +529,16 @@ export const REPORT_STYLES =
 "  --aviso-suave: #F5EAC9;\n" +
 "  --error: #7F2B00;\n" +
 "  --error-suave: #FBE3D6;\n" +
+"  --borrar: #9A2D10;\n" +
+"  --borrar-suave: #FBE9E3;\n" +
+"  --campo: #EEF2F7;\n" +
+"  --acento-hover: #0F4C86;\n" +
+"  --acento-suave: #E3EDF8;\n" +
+"  --acento-suave-hover: #D2E2F3;\n" +
+"  --sombra-lista: 0 10px 28px rgba(22, 32, 44, 0.16), 0 2px 6px rgba(22, 32, 44, 0.08);\n" +
+"  --exito-fondo: #F3FAF3;\n" +
+"  --exito-borde: #CFE6D0;\n" +
+"  --exito-texto: #2D6830;\n" +
 "  --fuente-ui: system-ui, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif;\n" +
 "  --fuente-mono: ui-monospace, Consolas, \"Cascadia Mono\", \"Courier New\", monospace;\n" +
 "}\n" +
@@ -571,6 +672,30 @@ export const REPORT_STYLES =
 ".ov { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--borde-suave); font-size: 0.875rem; }\n" +
 ".ov:last-child { border-bottom: 0; }\n" +
 ".ov .p { margin-left: auto; }\n" +
+"/* tarjeta cumple sin reemplazo */\n" +
+".cumple { background: var(--exito-fondo); border: 1px solid var(--exito-borde); border-radius: 8px; padding: 16px; margin-bottom: 12px; }\n" +
+".cumple .cabecera { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }\n" +
+".cumple .sello { background: var(--exito-texto); color: var(--exito-fondo); font-weight: 700; font-size: 0.75rem; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.02em; }\n" +
+".cumple .contexto { font-size: 0.75rem; color: var(--texto-secundario); }\n" +
+".cumple .titulo { margin: 2px 0 4px; font-size: 1.25rem; line-height: 1.25; font-weight: 700; }\n" +
+".cumple .lead { margin: 0 0 14px; color: var(--texto-secundario); font-size: 0.8125rem; }\n" +
+".cumple .bandas-cumple { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 6px 10px; align-items: center; margin-bottom: 14px; }\n" +
+".cumple .bandas-cumple > span { font-size: 0.75rem; color: var(--texto-secundario); }\n" +
+".cumple .banda { height: 22px; }\n" +
+".cumple .cifras-cumple { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }\n" +
+".cumple .cifra { background: var(--superficie); border: 1px solid var(--exito-borde); border-radius: 4px; padding: 8px 10px; min-width: 0; }\n" +
+".cumple .cifra .v { display: block; font-size: 1.375rem; font-weight: 700; color: var(--exito-texto); line-height: 1.15; }\n" +
+".cumple .cifra .e { display: block; font-size: 0.75rem; color: var(--texto-secundario); }\n" +
+".cumple .nota-cumple { margin: 0 0 14px; font-size: 0.75rem; color: var(--texto-secundario); }\n" +
+".cumple .margen .tit { display: flex; justify-content: space-between; gap: 8px; font-size: 0.75rem; color: var(--texto-secundario); margin-bottom: 6px; }\n" +
+".cumple .margen .tit b { color: var(--exito-texto); }\n" +
+".cumple .regla { position: relative; height: 10px; background: var(--exito-borde); border-radius: 999px; }\n" +
+".cumple .regla .zona { position: absolute; left: 0; top: 0; bottom: 0; background: var(--aviso-suave); border-radius: 999px 0 0 999px; border-right: 2px solid var(--aviso); }\n" +
+".cumple .regla .punto { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--exito-texto); border: 2px solid var(--exito-fondo); }\n" +
+".cumple .eje { position: relative; height: 14px; font-size: 0.75rem; color: var(--texto-secundario); margin-top: 4px; }\n" +
+".cumple .eje span { position: absolute; transform: translateX(-50%); }\n" +
+".cumple .eje span:first-child { transform: none; }\n" +
+".cumple .eje span:last-child { transform: translateX(-100%); }\n" +
 "/* metodo */\n" +
 ".metodo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border: 1px solid var(--borde-suave); border-radius: 8px; overflow: hidden; font-size: 0.875rem; margin: 0; }\n" +
 ".metodo div { padding: 10px 14px; border-bottom: 1px solid var(--borde-suave); }\n" +
@@ -602,7 +727,7 @@ export const REPORT_STYLES =
 "  body { background: #FFFFFF; font-size: 10.5pt; }\n" +
 "  .hoja { margin: 0; border: 0; border-radius: 0; max-width: none; }\n" +
 "  section { break-inside: auto; }\n" +
-"  .veredicto, .parc, .ficha, .col, .metodo, .caja, .rec-cab, .antes-despues, .ov, tr, h2, h3 { break-inside: avoid; }\n" +
+"  .veredicto, .parc, .ficha, .col, .metodo, .caja, .rec-cab, .antes-despues, .ov, .cumple, tr, h2, h3 { break-inside: avoid; }\n" +
 "  h2, h3, .intro { break-after: avoid; }\n" +
 "  .p.ok, .p.ko, .p.aviso, .p.neutra { border: 1px solid currentColor; }\n" +
 "  .env { overflow: visible; }\n" +

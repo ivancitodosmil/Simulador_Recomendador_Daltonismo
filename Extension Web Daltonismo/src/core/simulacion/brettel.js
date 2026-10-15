@@ -18,15 +18,16 @@
 
 import { rgbToXyz, xyzToRgb } from "../color/conversion.js";
 
-// XYZ (D65) -> LMS, Hunt-Pointer-Estévez normalizada a D65.
-const XYZ_TO_LMS = [
+// XYZ (D65) -> LMS, Hunt-Pointer-Estévez normalizada a D65. Las
+// constantes se exportan para la simulación píxel a píxel (imagen.js).
+export const XYZ_TO_LMS = [
   [0.4002, 0.7076, -0.0808],
   [-0.2263, 1.1653, 0.0457],
   [0.0, 0.0, 0.9182]
 ];
 
 // Inversa de la anterior (constante documentada, no se invierte en runtime).
-const LMS_TO_XYZ = [
+export const LMS_TO_XYZ = [
   [1.86007, -1.12948, 0.21990],
   [0.36122, 0.63880, -0.00001],
   [0.0, 0.0, 1.08909]
@@ -37,8 +38,8 @@ const LMS_TO_XYZ = [
 //   485 nm: XYZ = (0.05795, 0.16930, 0.61620) -> LMS (0.093199, 0.212331, 0.565795)
 //   660 nm: XYZ = (0.16490, 0.06100, 0.00000) -> LMS (0.109157, 0.033766, 0.000000)
 // Normales de los planos de proyección n = W × A, con W = (1,1,1):
-const PLANE_485_NORMAL = { l: 0.353464, m: -0.472596, s: 0.119132 };
-const PLANE_660_NORMAL = { l: -0.033766, m: 0.109157, s: -0.075391 };
+export const PLANE_485_NORMAL = { l: 0.353464, m: -0.472596, s: 0.119132 };
+export const PLANE_660_NORMAL = { l: -0.033766, m: 0.109157, s: -0.075391 };
 
 /**
  * Simula la tritanopia (pérdida del cono S) para un color sRGB {r,g,b}

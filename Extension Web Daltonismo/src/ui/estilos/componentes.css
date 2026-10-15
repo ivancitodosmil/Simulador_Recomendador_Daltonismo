@@ -333,16 +333,164 @@ label.et {
   margin-bottom: 4px;
 }
 
-select {
-  width: 100%;
-  font: inherit;
-  font-size: var(--tam-base);
-  color: var(--texto);
-  background-color: var(--superficie);
+/* ------------------------------------------------------------------
+   Campo relleno (maqueta de controles): rótulo y valor dentro del campo,
+   flecha en un tramo propio de 48 px y el select nativo, transparente,
+   cubriendo todo el campo. Teclado y lector de pantalla siguen usando el
+   select; el texto visible del valor lo sincroniza panel.js. Tamaños de la
+   maqueta: rótulo 12 px, valor 16 px semibold.
+   ------------------------------------------------------------------ */
+
+.campo {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  align-items: stretch;
+  background-color: var(--campo);
+  /* Borde de control en reposo: --borde (≥ 3:1 sobre la tarjeta y sobre
+     el propio campo en los dos temas, auditado). */
   border: 1px solid var(--borde);
-  border-radius: var(--radio-s);
-  padding: 7px 10px;
-  min-height: 34px;
+  border-radius: 10px;
+  min-height: 58px;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.campo:hover {
+  border-color: var(--texto);
+}
+
+/* Foco (o lista abierta): borde de acento, fondo de superficie y anillo
+   de 4 px al 22 % del acento. */
+.campo:focus-within {
+  border-color: var(--acento);
+  background-color: var(--superficie);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--acento) 22%, transparent);
+}
+
+.campo .txt {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  padding: 8px 14px;
+  min-width: 0;
+  pointer-events: none;
+}
+
+.campo .rot {
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+}
+
+.campo .val {
+  font-size: var(--tam-titulo);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* La línea que separa la flecha lleva el mismo --borde del campo: es parte
+   del mismo control. */
+.campo .flecha {
+  display: grid;
+  place-items: center;
+  border-left: 1px solid var(--borde);
+  pointer-events: none;
+}
+
+.campo .flecha::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  margin-top: -5px;
+  border-right: 2px solid var(--texto);
+  border-bottom: 2px solid var(--texto);
+  transform: rotate(45deg);
+}
+
+.campo select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--tam-titulo);
+}
+
+/* Lista personalizable de Chrome (appearance: base-select): la lista se
+   dibuja con los tokens del panel; sin soporte queda la lista nativa. */
+@supports (appearance: base-select) {
+  .campo select,
+  .campo select::picker(select) {
+    appearance: base-select;
+  }
+
+  .campo select::picker(select) {
+    margin-block-start: 8px;
+    background-color: var(--superficie);
+    border: 1px solid var(--borde-suave);
+    border-radius: 10px;
+    padding: 6px;
+    box-shadow: var(--sombra-lista);
+  }
+
+  /* Opción: nombre 15 px semibold y descripción 12,5 px (maqueta). */
+  .campo select option {
+    display: block;
+    padding: 9px 12px;
+    border-radius: 7px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--texto);
+    cursor: pointer;
+  }
+
+  .campo select option::after {
+    content: attr(data-desc);
+    display: block;
+    font-size: 0.78125rem;
+    font-weight: 400;
+    color: var(--texto-secundario);
+  }
+
+  .campo select option:not([data-desc])::after {
+    content: none;
+  }
+
+  .campo select option::checkmark {
+    display: none;
+  }
+
+  .campo select option:hover,
+  .campo select option:focus-visible {
+    background-color: var(--superficie-2);
+    outline: none;
+  }
+
+  .campo select option:checked {
+    background-color: var(--acento-suave);
+    color: var(--acento);
+  }
+
+  .campo select hr {
+    margin: 4px 8px;
+    border: 0;
+    height: 1px;
+    background-color: var(--borde-suave);
+  }
+
+  /* Lista abierta: mismo aspecto que el foco y flecha hacia arriba. */
+  .campo:has(select:open) {
+    border-color: var(--acento);
+    background-color: var(--superficie);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--acento) 22%, transparent);
+  }
+
+  .campo:has(select:open) .flecha::before {
+    margin-top: 5px;
+    transform: rotate(225deg);
+  }
 }
 
 .fila-sev {
@@ -397,6 +545,46 @@ input[type="number"] {
   color: var(--texto-secundario);
 }
 
+/* ------------------------------------------------------------------
+   Tarjeta «Evaluación de accesibilidad» (maqueta del panel final):
+   texto de apoyo pegado al título y lista de definiciones de tres filas
+   separadas por líneas finas, rótulo semibold en una columna de 118 px
+   que crece si hace falta (a 320 px «Distinguibilidad» no se corta) y
+   descripción en texto secundario. Tamaño 13,5 px de la maqueta.
+   ------------------------------------------------------------------ */
+
+.desc {
+  margin: -6px 0 0;
+  font-size: var(--tam-secundario);
+  color: var(--texto-secundario);
+}
+
+.alcance {
+  margin: 0;
+  display: grid;
+  border-top: 1px solid var(--borde-suave);
+}
+
+.alcance div {
+  display: grid;
+  grid-template-columns: minmax(118px, max-content) minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--borde-suave);
+  font-size: 0.84375rem;
+}
+
+.alcance dt {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.alcance dd {
+  margin: 0;
+  color: var(--texto-secundario);
+  overflow-wrap: anywhere;
+}
+
 .vacio {
   margin: 0;
   padding: 8px 0;
@@ -405,43 +593,81 @@ input[type="number"] {
   text-align: center;
 }
 
+/* Botones (maqueta de controles): 48 px, radio 10 px, texto 15 px
+   semibold, sin iconos. Principal (acento), tonal (acento suave) y
+   borrar (texto de error con borde al 45 %). Al presionar bajan 1 px. */
 .btn {
-  font: inherit;
-  font-size: var(--tam-base);
-  font-weight: 600;
-  border-radius: var(--radio-s);
-  min-height: 36px;
-  padding: 8px 14px;
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  height: 48px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.05s;
 }
 
-.btn.prim {
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 3px;
+}
+
+.btn-principal {
   background-color: var(--acento);
   color: var(--acento-texto);
-  border: 1px solid var(--acento);
 }
 
-.btn.secu {
-  background-color: var(--superficie);
+.btn-principal:hover {
+  background-color: var(--acento-hover);
+}
+
+.btn-tonal {
+  background-color: var(--acento-suave);
   color: var(--acento);
-  border: 1px solid var(--borde);
 }
 
-.btn.texto {
-  background: transparent;
-  border: 0;
-  color: var(--texto-secundario);
-  font-weight: 500;
-  width: auto;
-  padding: 8px 4px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.btn-tonal:hover {
+  background-color: var(--acento-suave-hover);
+}
+
+/* Rojo propio del botón (tokens --borrar): el de la maqueta, sin tocar el
+   --error de las pastillas, que debe seguir separado de «aviso» bajo las
+   tres deficiencias. */
+.btn-borrar {
+  background-color: transparent;
+  color: var(--borrar);
+  border-color: color-mix(in srgb, var(--borrar) 45%, transparent);
+}
+
+.btn-borrar:hover {
+  background-color: var(--borrar-suave);
+  border-color: var(--borrar);
 }
 
 .btn:disabled {
   opacity: 0.6;
   cursor: progress;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .campo {
+    transition: none;
+  }
+
+  .btn:active {
+    transform: none;
+  }
 }
 
 /* Botón con aspecto de enlace (Revisar). */
@@ -1065,6 +1291,136 @@ table.matriz td.x {
   min-width: 0;
 }
 
+/* ------------------------------------------------------------------
+   Copiar colores y descargar el tema de Power BI (maqueta de copiar):
+   título con botón tonal pequeño, cada hex propuesto como botón de
+   copiar con la palabra «Copiar» que aparece al pasar o enfocar (sin
+   que la tabla salte), «Copiado» en correcto durante dos segundos, y
+   el enlace de descarga separado por una línea con su nota.
+   ------------------------------------------------------------------ */
+
+.exportar-paleta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.map-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.map-cab h3 {
+  margin: 0;
+  font-size: var(--tam-base);
+  font-weight: 600;
+}
+
+/* Botón tonal pequeño: 34 px, acento suave con texto de acento. */
+.btn-sm {
+  flex: none;
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.84375rem;
+  font-weight: 600;
+  background-color: var(--acento-suave);
+  color: var(--acento);
+  cursor: pointer;
+}
+
+.btn-sm:hover {
+  background-color: var(--acento-suave-hover);
+}
+
+.btn-sm.ok {
+  color: var(--correcto);
+}
+
+.map--simple .cab-t,
+.map--simple .r {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.map .r .orig {
+  font-size: 0.84375rem;
+}
+
+/* Hex propuesto como botón: transparente, mono, muestra a la izquierda. */
+.hex {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-left: -8px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 7px;
+  background-color: transparent;
+  color: var(--texto);
+  font: inherit;
+  font-family: var(--fuente-mono);
+  font-size: 0.84375rem;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hex .acc {
+  margin-left: auto;
+  font-family: var(--fuente-ui);
+  font-size: var(--tam-etiqueta);
+  font-weight: 600;
+  color: var(--acento);
+  white-space: nowrap;
+  opacity: 0;
+}
+
+.hex:hover,
+.hex:focus-visible {
+  background-color: var(--superficie-2);
+}
+
+.hex:hover .acc,
+.hex:focus-visible .acc,
+.hex.ok .acc {
+  opacity: 1;
+}
+
+.hex.ok .acc {
+  color: var(--correcto);
+}
+
+.pbi {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  padding-top: 12px;
+  border-top: 1px solid var(--borde-suave);
+}
+
+.pbi .enlace {
+  font-size: 0.84375rem;
+  text-underline-offset: 3px;
+  min-height: 0;
+  padding: 2px 0;
+}
+
+.enlace.ok {
+  color: var(--correcto);
+  text-decoration: none;
+}
+
+.pbi .nota {
+  margin: 0;
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+}
+
 .interruptor {
   display: flex;
   align-items: center;
@@ -1104,6 +1460,177 @@ table.matriz td.x {
   border-color: var(--acento);
 }
 
+/* Interruptor deshabilitado (sin elementos recoloreables): misma atenuación
+   que los demás controles deshabilitados. */
+.sw:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------
+   Tarjeta «Cumple sin reemplazo» (diseño de la maqueta de cierre,
+   v5). Solo tokens: los tres de éxito (fondo, borde y texto) para la
+   tarjeta, el sello, las cifras, el margen, la pista y el punto de la
+   regla; la zona bajo el umbral sigue en aviso-suave con marca en aviso.
+   Sin iconos, sin barras laterales ni animaciones.
+   ------------------------------------------------------------------ */
+
+.cumple {
+  background-color: var(--exito-fondo);
+  border: 1px solid var(--exito-borde);
+  border-radius: var(--radio-m);
+  padding: 16px;
+  margin-top: 4px;
+}
+
+.cumple .cabecera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.cumple .sello {
+  background-color: var(--exito-texto);
+  color: var(--exito-fondo);
+  font-weight: 700;
+  font-size: var(--tam-etiqueta);
+  padding: 3px 10px;
+  border-radius: var(--radio-pastilla);
+  letter-spacing: 0.02em;
+}
+
+.cumple .contexto {
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+}
+
+/* 20 px de la maqueta, en rem (1.4.4). */
+.cumple h3 {
+  margin: 2px 0 4px;
+  font-size: 1.25rem;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+.cumple .lead {
+  margin: 0 0 14px;
+  color: var(--texto-secundario);
+  font-size: var(--tam-secundario);
+}
+
+.cumple .bandas-cumple {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 6px 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.cumple .bandas-cumple > span {
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+}
+
+.cumple .cifras-cumple {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.cumple .cifra {
+  background-color: var(--superficie);
+  border: 1px solid var(--exito-borde);
+  border-radius: var(--radio-s);
+  padding: 8px 10px;
+  min-width: 0;
+}
+
+.cumple .cifra .v {
+  display: block;
+  font-size: var(--tam-grande);
+  font-weight: 700;
+  color: var(--exito-texto);
+  line-height: 1.15;
+}
+
+.cumple .cifra .e {
+  display: block;
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+}
+
+/* Nota de contraste aproximado (series sin elemento). */
+.cumple .nota-cumple {
+  margin: 0 0 14px;
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+}
+
+.cumple .margen .tit {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+  margin-bottom: 6px;
+}
+
+.cumple .margen .tit b {
+  color: var(--exito-texto);
+}
+
+/* Regla lineal de 0 a 50, como la escala de Distinguibilidad. */
+.cumple .regla {
+  position: relative;
+  height: 10px;
+  background-color: var(--exito-borde);
+  border-radius: var(--radio-pastilla);
+}
+
+.cumple .regla .zona {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background-color: var(--aviso-suave);
+  border-radius: var(--radio-pastilla) 0 0 var(--radio-pastilla);
+  border-right: 2px solid var(--aviso);
+}
+
+.cumple .regla .punto {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background-color: var(--exito-texto);
+  border: 2px solid var(--exito-fondo);
+}
+
+.cumple .eje {
+  position: relative;
+  height: 14px;
+  font-size: var(--tam-etiqueta);
+  color: var(--texto-secundario);
+  margin-top: 4px;
+}
+
+.cumple .eje span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.cumple .eje span:first-child {
+  transform: none;
+}
+
+.cumple .eje span:last-child {
+  transform: translateX(-100%);
+}
+
 .sw[aria-checked="true"]::after {
   left: 18px;
   background-color: var(--acento-texto);
@@ -1113,14 +1640,21 @@ table.matriz td.x {
    Pie
    ------------------------------------------------------------------ */
 
+/* «Exportar PDF» y «Limpiar todo» en proporción 1,5 a 1; sin evaluación
+   (exportar oculto) «Limpiar todo» ocupa todo el ancho. */
 .pie {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 10px;
   align-items: center;
 }
 
-.pie .btn.secu {
-  flex: 1;
+.pie:has(> .btn[hidden]) {
+  grid-template-columns: 1fr;
+}
+
+.pie .btn {
+  min-width: 0;
 }
 
 /* ------------------------------------------------------------------

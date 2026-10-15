@@ -25,6 +25,10 @@
    #E5C46E y correcto verde azulado #78CFBE; separación mínima del trío
    bajo las tres deficiencias ≥ 12 (auditada). Cada muestra y banda del
    dashboard lleva su propio borde para leerse sobre el fondo azulado.
+   Los controles (maqueta de controles, versión 1.0.0) añaden el fondo
+   del campo relleno, el acento en hover, el acento suave del botón
+   tonal, el rojo propio del botón «Limpiar todo» y la sombra de la
+   lista desplegable.
 
    Tema: mientras no se elige, sigue la preferencia del sistema; la
    elección manual se guarda en chrome.storage.local y se
@@ -60,6 +64,19 @@
   --correcto: #00563F;       --correcto-suave: #DCF2E8;
   --aviso: #8A6100;          --aviso-suave: #F5EAC9;
   --error: #7F2B00;          --error-suave: #FBE3D6;
+  /* --- Controles (maqueta de controles): fondo del campo relleno, acento
+         en hover, acento suave para el botón tonal y la opción elegida.
+         El botón «Limpiar todo» lleva su propio rojo (el de la maqueta):
+         como --error global rompería la separación aviso/error bajo
+         deuteranopía (ΔE00 6,2 < 10), que las pastillas necesitan --- */
+  --borrar: #9A2D10;         --borrar-suave: #FBE9E3;
+  --campo: #EEF2F7;
+  --acento-hover: #0F4C86;
+  --acento-suave: #E3EDF8;   --acento-suave-hover: #D2E2F3;
+  /* Sombra de la lista desplegable: la única sombra además del selector de tema. */
+  --sombra-lista: 0 10px 28px rgba(22, 32, 44, 0.16), 0 2px 6px rgba(22, 32, 44, 0.08);
+  /* Estado de éxito (tarjeta «Cumple»): fondo, borde y texto. */
+  --exito-fondo: #F3FAF3;    --exito-borde: #CFE6D0;    --exito-texto: #2D6830;
 
   /* --- Foco visible --- */
   --foco-grosor: 2px;
@@ -106,6 +123,12 @@
     --correcto: #78CFBE;     --correcto-suave: #15322F;
     --aviso: #E5C46E;        --aviso-suave: #322D1C;
     --error: #F28080;        --error-suave: #3B2230;
+    --borrar: #F4A48A;       --borrar-suave: #3A2526;
+    --campo: #26344B;
+    --acento-hover: #A8C7FA;
+    --acento-suave: #22385A; --acento-suave-hover: #2A4570;
+    --sombra-lista: 0 10px 28px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+    --exito-fondo: #1A3029;  --exito-borde: #2C4A3F;    --exito-texto: #9AD6A4;
   }
 }
 
@@ -128,4 +151,10 @@
   --correcto: #78CFBE;     --correcto-suave: #15322F;
   --aviso: #E5C46E;        --aviso-suave: #322D1C;
   --error: #F28080;        --error-suave: #3B2230;
+  --borrar: #F4A48A;       --borrar-suave: #3A2526;
+  --campo: #26344B;
+  --acento-hover: #A8C7FA;
+  --acento-suave: #22385A; --acento-suave-hover: #2A4570;
+  --sombra-lista: 0 10px 28px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --exito-fondo: #1A3029;  --exito-borde: #2C4A3F;    --exito-texto: #9AD6A4;
 }

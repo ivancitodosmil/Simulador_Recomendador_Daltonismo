@@ -137,6 +137,11 @@ export function getSimulationFilterState() {
     : { active: false, config: null };
 }
 
+/** Contenedor sobre el que está aplicado el filtro (null si no hay filtro). */
+export function getSimulationFilterTarget() {
+  return activeTarget;
+}
+
 /** Retira el filtro y restaura el estado original de la página. */
 export function clearSimulationFilter(doc = document) {
   if (activeTarget) {

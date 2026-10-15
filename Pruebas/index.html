@@ -47,7 +47,7 @@
 <body>
   <header>
     <h1>Banco de pruebas — Accesibilidad cromática de dashboards</h1>
-    <p class="subtitulo">Seis paneles construidos a propósito para validar la extensión de navegador: cada uno provoca un escenario distinto de extracción o de evaluación de color. Datos ficticios de ventas por región, ejercicio 2025.</p>
+    <p class="subtitulo">Diez paneles construidos a propósito para validar la extensión de navegador: cada uno provoca un escenario distinto de extracción, simulación o evaluación de color. Datos ficticios de ventas por región, ejercicio 2025.</p>
   </header>
 
   <main>
@@ -77,14 +77,38 @@
 
     <a class="panel" href="panel-conforme/index.html">
       <h2>5 · Panel Conforme</h2>
-      <p>Paleta Okabe-Ito sobre fondo blanco con texto oscuro: todo cumple.</p>
-      <span class="etiqueta">informe de cumplimiento sin reemplazos</span>
+      <p>Paleta Okabe-Ito completa: se distingue bajo las tres deficiencias, pero el amarillo, el naranja y el celeste no llegan a 3:1 contra blanco (WCAG 1.4.11). El caso que cumple todo es panel-cumple.</p>
+      <span class="etiqueta">distinguible, con tres series bajo 3:1 en canvas</span>
     </a>
 
     <a class="panel" href="panel-secuencial/index.html">
       <h2>6 · Panel Secuencial</h2>
       <p>Mapa de calor de ventas mensuales por región con rampa semáforo rojo→amarillo→verde por escalones (3 por defecto, ampliable a 5).</p>
       <span class="etiqueta">rampa secuencial hostil al daltonismo</span>
+    </a>
+
+    <a class="panel" href="panel-plataforma/index.html">
+      <h2>7 · Panel Plataforma</h2>
+      <p>Armazón de una plataforma de informes (barra superior, buscador, iconos svg use, navegación con más de 5000 nodos y un aviso solo para lectores) con los gráficos dentro de un iframe aislado, un iframe con canvas y un shadow root; series finas que ocupan menos del 1 % de la pantalla.</p>
+      <span class="etiqueta">marcos, shadow DOM, captura recortada e interfaz excluida</span>
+    </a>
+
+    <a class="panel" href="panel-imagen/index.html">
+      <h2>8 · Panel Imagen</h2>
+      <p>El dashboard es una captura PNG incrustada en la página; el mismo PNG puede abrirse directamente en una pestaña como documento de imagen.</p>
+      <span class="etiqueta">extracción por captura y simulación por captura</span>
+    </a>
+
+    <a class="panel" href="panel-webgl/index.html">
+      <h2>9 · Panel WebGL</h2>
+      <p>Barras dibujadas en un canvas WebGL que ocupa casi toda la vista, como el lienzo de Figma: el filtro CSS no lo transforma.</p>
+      <span class="etiqueta">simulación por captura con capa fija</span>
+    </a>
+
+    <a class="panel" href="panel-cumple/index.html">
+      <h2>10 · Panel Cumple</h2>
+      <p>Dashboard de ventas en SVG con cuatro series de Okabe-Ito que superan 3:1 sobre blanco y se distinguen bajo las tres deficiencias; indicadores, barras agrupadas, líneas con marcadores y dona. Incluye <code>dashboard.png</code> a 1440 px para la captura.</p>
+      <span class="etiqueta">caso que cumple: tarjeta «Cumple» en SVG y por captura</span>
     </a>
   </main>
 

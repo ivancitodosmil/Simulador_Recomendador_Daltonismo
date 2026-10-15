@@ -13,12 +13,16 @@
 // (distinguibilidad.js), que trabaja con los colores simulados.
 // Los resultados se agrupan por criterio y siempre incluyen la cifra
 // obtenida junto al umbral exigido; la comparación se hace sin redondeo.
-// Los colores del nivel 3 (captura) no tienen elemento y no entran en
-// pares: cuando ese nivel actuó, el orquestador marca la evaluación
-// completa como aproximada.
+// Los colores de los niveles 2 y 3 (canvas y captura) no tienen elemento:
+// para que una serie nunca pase por «cumple» solo porque nadie la midió,
+// addApproximateSeriesContrast les añade un par 1.4.11 aproximado contra
+// el fondo dominante de su zona de gráficos (canvas: fondo CSS efectivo
+// del canvas; captura: color acromático dominante del recorte) o, en su
+// defecto, contra el fondo de página. Esas filas llevan approximate: true.
 // ------------------------------------------------------------------
 
-import { parseCssColor, rgbToHex } from "../color/conversion.js";
+import { parseCssColor, rgbToHex, rgbToLab } from "../color/conversion.js";
+import { ciede2000 } from "../color/diferencia.js";
 import { contrastRatio, meetsThreshold, WCAG_THRESHOLDS } from "../color/contraste.js";
 
 // Texto grande según WCAG: ≥ 18 pt (24 px) o ≥ 14 pt (18.66 px) en negrita.
@@ -56,7 +60,7 @@ function compositeLayer(layer, base) {
  * opaca, y las compone de fuera hacia dentro sobre la base blanca que
  * pinta el navegador cuando nadie declara fondo.
  */
-function effectiveBackground(element, doc) {
+export function effectiveBackground(element, doc = document) {
   const getStyle = doc.defaultView.getComputedStyle;
   const layers = [];
   let node = element;
@@ -150,11 +154,108 @@ export function evaluateWcagContrast(observations, { doc = document } = {}) {
     }
   }
 
-  // Fallos primero y, dentro de cada bloque, del contraste más bajo al más alto.
-  const bySeverity = (a, b) => (a.passes === b.passes ? a.ratio - b.ratio : a.passes ? 1 : -1);
-  const all = Array.from(groups.values());
+  return splitByCriterion(Array.from(groups.values()));
+}
+
+// Fallos primero y, dentro de cada bloque, del contraste más bajo al más alto.
+const bySeverity = (a, b) => (a.passes === b.passes ? a.ratio - b.ratio : a.passes ? 1 : -1);
+
+function splitByCriterion(all) {
   return {
     text: all.filter((group) => group.criterion === "1.4.3").sort(bySeverity),
     graphics: all.filter((group) => group.criterion === "1.4.11").sort(bySeverity)
   };
+}
+
+/**
+ * Fusiona los resultados de varios marcos: los pares con el mismo
+ * criterio, colores y tamaño de texto se suman (elementos, ejemplos,
+ * roles); el resto se concatena. Devuelve { text, graphics } ordenados.
+ */
+export function mergeContrastResults(results = []) {
+  const merged = new Map();
+  for (const result of results) {
+    if (!result) continue;
+    for (const group of [...(result.text || []), ...(result.graphics || [])]) {
+      const key = group.criterion + "|" + group.foreground.hex + "|" + group.background.hex + "|" + (group.largeText ? "L" : "N");
+      const existing = merged.get(key);
+      if (!existing) {
+        merged.set(key, { ...group, roles: [...(group.roles || [])], examples: [...(group.examples || [])] });
+        continue;
+      }
+      existing.count += group.count;
+      for (const role of group.roles || []) if (!existing.roles.includes(role)) existing.roles.push(role);
+      for (const example of group.examples || []) {
+        if (existing.examples.length < MAX_EXAMPLES && !existing.examples.includes(example)) existing.examples.push(example);
+      }
+    }
+  }
+  return splitByCriterion(Array.from(merged.values()));
+}
+
+/** Fondo efectivo de un elemento como entrada serializable {hex, rgb}. */
+export function backgroundEntry(element, doc = document) {
+  const rgb = effectiveBackground(element, doc);
+  return { hex: rgbToHex(rgb), rgb };
+}
+
+// Una fila cuenta como par propio de una serie si su primer plano queda a
+// menos de este ΔE00 del color de la paleta (mismo criterio que el panel).
+const MATCH_DELTA = 2.5;
+
+/** Fondo de mayor peso en la paleta, si la extracción registró alguno. */
+function heaviestBackground(palette) {
+  const backgrounds = palette
+    .filter((color) => (color.roles || []).includes("background"))
+    .sort((a, b) => (b.weight || 0) - (a.weight || 0));
+  return backgrounds.length ? { hex: backgrounds[0].hex, rgb: backgrounds[0].rgb } : null;
+}
+
+/**
+ * Añade un par 1.4.11 aproximado a cada color de serie muestreado (canvas
+ * o captura) que no tiene fila propia: sin elemento no hay fondo efectivo,
+ * así que se compara contra el fondo dominante de su zona (canvasBackground
+ * o captureBackground) o, si falta, contra el fondo de página. Las filas
+ * añadidas llevan approximate: true, count 0 y source "canvas" | "capture";
+ * las existentes no cambian. Devuelve un contraste nuevo ordenado.
+ */
+export function addApproximateSeriesContrast(
+  palette = [],
+  contrast = { text: [], graphics: [] },
+  { pageBackground = null, canvasBackground = null, captureBackground = null } = {}
+) {
+  const graphics = (contrast.graphics || []).slice();
+  const seriesRowLabs = graphics
+    .filter((group) => (group.roles || []).includes("series"))
+    .map((group) => rgbToLab(group.foreground.rgb));
+  const fallback = pageBackground || heaviestBackground(palette) || { hex: "#FFFFFF", rgb: { r: 255, g: 255, b: 255 } };
+  const added = [];
+  for (const color of palette) {
+    const roles = color.roles || [];
+    const levels = color.levels || [];
+    if (!roles.includes("series") || !(levels.includes("canvas") || levels.includes("capture"))) continue;
+    const lab = color.lab || rgbToLab(color.rgb);
+    if (seriesRowLabs.some((rowLab) => ciede2000(rowLab, lab) < MATCH_DELTA)) continue;
+    // El fondo CSS del canvas es más fiable que el acromático dominante de
+    // la captura: si el color viene de los dos niveles, manda el canvas.
+    const source = levels.includes("canvas") ? "canvas" : "capture";
+    const background = (source === "canvas" ? canvasBackground : captureBackground) || fallback;
+    const ratio = contrastRatio(color.rgb, background.rgb);
+    added.push({
+      criterion: "1.4.11",
+      foreground: { hex: color.hex, rgb: color.rgb },
+      background: { hex: background.hex, rgb: background.rgb },
+      ratio,
+      threshold: WCAG_THRESHOLDS.graphics,
+      largeText: false,
+      passes: meetsThreshold(ratio, WCAG_THRESHOLDS.graphics),
+      count: 0,
+      examples: [],
+      roles: ["series"],
+      approximate: true,
+      source
+    });
+  }
+  if (!added.length) return contrast;
+  return { ...contrast, graphics: graphics.concat(added).sort(bySeverity) };
 }

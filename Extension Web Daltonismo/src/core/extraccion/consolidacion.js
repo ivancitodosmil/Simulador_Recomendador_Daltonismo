@@ -2,11 +2,12 @@
 // Consolidación de la paleta (RF01): normaliza los formatos de los tres
 // niveles de extracción, agrupa los colores casi idénticos conservando
 // un representante por grupo, ordena por frecuencia y registra el rol
-// de cada color (fondo, texto, serie o borde) cuando el nivel de
-// extracción lo permite. Sprint 1; agrupación con CIEDE2000 desde el 3.
+// de cada color (fondo, texto, serie o borde) y si aparece dentro de una
+// zona de gráficos. Sprint 1; agrupación con CIEDE2000 desde el 3 y
+// fusión de varios marcos desde la versión 1.0.0.
 // ------------------------------------------------------------------
 
-import { parseCssColor, rgbToHex, rgbToLab } from "../color/conversion.js";
+import { hexToRgb, parseCssColor, rgbToHex, rgbToLab } from "../color/conversion.js";
 import { ciede2000 } from "../color/diferencia.js";
 
 // Umbral de agrupación: por debajo de este ΔE00 dos tonos se consideran el
@@ -69,12 +70,14 @@ function groupByPerceptualDistance(rawEntries) {
         roles: new Set(),
         levels: new Set(),
         elements: [],
-        examples: []
+        examples: [],
+        inChart: false
       };
       groups.push(group);
     }
     group.weight += entry.weight;
     group.occurrences += 1;
+    if (entry.inChart) group.inChart = true;
     for (const role of entry.roles) group.roles.add(role);
     for (const level of entry.levels) group.levels.add(level);
     for (const element of entry.elements) {
@@ -104,7 +107,10 @@ function serializeGroups(groups) {
       roles: Array.from(group.roles),
       levels: Array.from(group.levels),
       occurrences: group.occurrences,
-      examples: group.examples
+      examples: group.examples,
+      // ¿Alguna aparición dentro de una zona de gráficos? Decide el marcado
+      // por defecto de las series consideradas.
+      inCharts: group.inChart
     }));
 }
 
@@ -133,7 +139,8 @@ export function consolidateObservations(domObservations = [], canvasEntries = []
       roles: [observation.role],
       levels: ["dom-svg"],
       elements: observation.element ? [observation.element] : [],
-      examples: observation.element ? [describeElement(observation.element)] : []
+      examples: observation.element ? [describeElement(observation.element)] : [],
+      inChart: observation.inChart === true
     });
   }
 
@@ -145,7 +152,8 @@ export function consolidateObservations(domObservations = [], canvasEntries = []
       roles: [entry.role],
       levels: ["canvas"],
       elements: [],
-      examples: []
+      examples: [],
+      inChart: entry.inChart !== false
     });
   }
 
@@ -170,7 +178,8 @@ export function mergePalettes(palette = [], extraEntries = [], level = "capture"
     roles: color.roles,
     levels: color.levels,
     elements: [],
-    examples: color.examples || []
+    examples: color.examples || [],
+    inChart: color.inCharts === true
   }));
   for (const entry of extraEntries) {
     rawEntries.push({
@@ -179,8 +188,61 @@ export function mergePalettes(palette = [], extraEntries = [], level = "capture"
       roles: [entry.role],
       levels: [level],
       elements: [],
-      examples: []
+      examples: [],
+      inChart: entry.inChart !== false
     });
+  }
+  return serializeGroups(groupByPerceptualDistance(rawEntries));
+}
+
+/**
+ * Fusiona las paletas ya serializadas de varios marcos (frames) en una
+ * sola. El peso de cada marco se escala por su número de observaciones
+ * del nivel 1, para que un armazón con pocos colores no pese lo mismo que
+ * el marco que contiene el dashboard.
+ *   frames: [{ palette, domObservations }]
+ */
+/**
+ * Elementos recoloreables por color de la paleta fusionada: suma, en todos
+ * los marcos, los elementos del registro de cada marco cuyo color queda a
+ * menos de ΔE00 2,5 del color (los representantes pueden diferir entre
+ * marcos). frameCounts: [{ hex: número de elementos }]. Devuelve
+ * { hex: total } con un valor para cada color de la paleta.
+ */
+export function countRecolorable(palette = [], frameCounts = []) {
+  const keys = [];
+  for (const counts of frameCounts) {
+    for (const hex of Object.keys(counts || {})) {
+      const rgb = hexToRgb(hex);
+      if (rgb) keys.push({ lab: rgbToLab(rgb), count: counts[hex] });
+    }
+  }
+  const result = {};
+  for (const color of palette) {
+    const lab = color.lab || rgbToLab(color.rgb);
+    let total = 0;
+    for (const key of keys) if (ciede2000(lab, key.lab) < GROUPING_DELTA_E) total += key.count;
+    result[color.hex] = total;
+  }
+  return result;
+}
+
+export function mergeFramePalettes(frames = []) {
+  const totalDom = frames.reduce((sum, frame) => sum + (frame.domObservations || 0), 0) || 1;
+  const rawEntries = [];
+  for (const frame of frames) {
+    const factor = frame.domObservations ? frame.domObservations / totalDom : 1 / Math.max(1, frames.length);
+    for (const color of frame.palette || []) {
+      rawEntries.push({
+        rgb: color.rgb,
+        weight: color.weight * factor,
+        roles: color.roles,
+        levels: color.levels,
+        elements: [],
+        examples: color.examples || [],
+        inChart: color.inCharts === true
+      });
+    }
   }
   return serializeGroups(groupByPerceptualDistance(rawEntries));
 }

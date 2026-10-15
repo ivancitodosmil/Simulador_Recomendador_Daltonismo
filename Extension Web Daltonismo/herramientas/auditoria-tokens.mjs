@@ -70,7 +70,8 @@ if (!manualBlock) {
 const CLARO = lightBlock.tokens;
 const OSCURO = { ...lightBlock.tokens, ...darkBlock.tokens };
 
-const SUPERFICIES = ["fondo-pagina", "superficie", "superficie-2"];
+// campo: fondo del campo relleno de los selectores (1.0.0).
+const SUPERFICIES = ["fondo-pagina", "superficie", "superficie-2", "campo"];
 const TEXTOS = ["texto", "texto-secundario", "acento", "correcto", "aviso", "error"];
 const TRIO = ["correcto", "aviso", "error"];
 const CONFIGS = [
@@ -102,6 +103,17 @@ function auditaTema(nombre, T) {
     check(nombre, sem + " / " + sem + "-suave", T[sem], T[sem + "-suave"], 4.5);
   }
   check(nombre, "acento-texto / acento", T["acento-texto"], T["acento"], 4.5);
+  // Controles 1.0.0: botón principal en hover, botón tonal (reposo y hover),
+  // opción elegida de la lista (nombre en acento y descripción secundaria).
+  check(nombre, "acento-texto / acento-hover", T["acento-texto"], T["acento-hover"], 4.5);
+  check(nombre, "acento / acento-suave", T["acento"], T["acento-suave"], 4.5);
+  check(nombre, "acento / acento-suave-hover", T["acento"], T["acento-suave-hover"], 4.5);
+  check(nombre, "texto-secundario / acento-suave", T["texto-secundario"], T["acento-suave"], 4.5);
+  // Copiar colores: «Copiados N colores» en correcto sobre el botón tonal.
+  check(nombre, "correcto / acento-suave", T["correcto"], T["acento-suave"], 4.5);
+  // Botón «Limpiar todo»: su rojo sobre el fondo del panel y sobre su fondo de hover.
+  check(nombre, "borrar / fondo-pagina", T["borrar"], T["fondo-pagina"], 4.5);
+  check(nombre, "borrar / borrar-suave", T["borrar"], T["borrar-suave"], 4.5);
   for (const s of SUPERFICIES) {
     check(nombre, "borde / " + s, T["borde"], T[s], 3);
     check(nombre, "foco (acento) / " + s, T["acento"], T[s], 3);

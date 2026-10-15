@@ -1,0 +1,119 @@
+/* Panel Cumple: fondo blanco, texto #1F2933 (15,3:1) y secundario #4B5563
+   (7,56:1); ejes, cuadriculas y bordes en #767676 (4,54:1). Ningun gris
+   claro por debajo de 3:1: la extension no debe hallar incumplimientos
+   fuera de las series. */
+body {
+  margin: 0;
+  background-color: #FFFFFF;
+  color: #1F2933;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+header {
+  padding: 24px 28px 8px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+}
+
+.subtitulo {
+  margin: 0;
+  color: #4B5563;
+  font-size: 0.95rem;
+  max-width: 78ch;
+}
+
+.indicadores {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  padding: 16px 28px 0;
+}
+
+.kpi {
+  border: 1px solid #767676;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.kpi .valor {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.kpi .etiqueta {
+  display: block;
+  margin-top: 4px;
+  color: #4B5563;
+  font-size: 0.85rem;
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+  gap: 20px;
+  padding: 20px 28px 32px;
+}
+
+.tarjeta {
+  background-color: #FFFFFF;
+  border: 1px solid #767676;
+  border-radius: 8px;
+  padding: 16px 18px 14px;
+}
+
+.tarjeta h2 {
+  margin: 0 0 2px;
+  font-size: 1.05rem;
+}
+
+.nota {
+  margin: 0 0 10px;
+  color: #4B5563;
+  font-size: 0.8rem;
+}
+
+.tarjeta svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* Tabla de datos: los valores tambien estan escritos. */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+}
+
+caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 8px;
+}
+
+th,
+td {
+  border: 1px solid #767676;
+  padding: 4px 6px;
+  text-align: right;
+}
+
+th[scope="row"],
+thead th:first-child {
+  text-align: left;
+}
+
+footer {
+  padding: 0 28px 28px;
+  font-size: 0.85rem;
+}
+
+footer a {
+  color: #0B57D0;
+}

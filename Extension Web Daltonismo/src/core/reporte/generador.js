@@ -26,6 +26,7 @@ import { simulateForConfig } from "../evaluacion/distinguibilidad.js";
  *   overview: desenlace bajo las tres deficiencias cuando no hay
  *     simulación: [{ type, outcome, schemeName, minDelta, seriesCount,
  *     maxAvailable, exhausted }]
+ *   noDataColors: ninguna serie es un color de datos (sin recomendación)
  */
 export function buildReportData({
   evaluation,
@@ -40,7 +41,10 @@ export function buildReportData({
   distSimulated = null,
   distOriginal = null,
   recommendation = null,
-  overview = null
+  overview = null,
+  noDataColors = false,
+  // Causa: "no-charts" | "empty-charts" | "no-data-colors" (mismo criterio que el panel).
+  noDataKind = "no-data-colors"
 }) {
   const palette = evaluation.palette || [];
   const contrast = evaluation.contrast || { text: [], graphics: [] };
@@ -48,6 +52,11 @@ export function buildReportData({
   const consideredSeries = series.map((entry, index) => ({
     hex: entry.hex,
     simulatedHex: simulatedRgbs[index] ? rgbToHex(simulatedRgbs[index]) : entry.hex,
+    // Simulada a severidad máxima: es lo que valida la recomendación y lo
+    // que muestra la tarjeta «Cumple sin reemplazo».
+    simulatedMaxHex: simulation.type !== "none" && entry.rgb
+      ? rgbToHex(simulateForConfig(entry.rgb, { type: simulation.type, severity: 1 }))
+      : entry.hex,
     share: entry.share,
     selected: selection.get(entry.hex) !== false,
     note: notes.get(entry.hex) || null,
@@ -87,7 +96,10 @@ export function buildReportData({
     largeText: group.largeText === true,
     count: group.count,
     roles: group.roles || [],
-    examples: group.examples || []
+    examples: group.examples || [],
+    // Par aproximado: serie sin elemento comparada con el fondo dominante.
+    approximate: group.approximate === true,
+    source: group.source || null
   });
 
   return {
@@ -106,9 +118,13 @@ export function buildReportData({
     },
     warnings: {
       approximate: evaluation.approximate === true,
+      // El recorrido alcanzó el tope de nodos en algún marco.
+      truncated: Boolean(evaluation.stats && evaluation.stats.truncated === true),
       selectedWithoutElements,
       variantsGrouped
     },
+    noDataColors: noDataColors === true,
+    noDataKind: noDataColors === true ? noDataKind : null,
     palette: palette.map((color) => ({
       hex: color.hex,
       // Versión simulada con la configuración vigente (fichas del reporte).

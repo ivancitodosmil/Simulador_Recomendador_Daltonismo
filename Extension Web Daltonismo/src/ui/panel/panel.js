@@ -31,14 +31,19 @@ import { buildReportData } from "../../core/reporte/generador.js";
 const byId = (id) => document.getElementById(id);
 
 const evaluateButton = byId("evaluate-button");
+const evaluationScope = byId("evaluation-scope");
+const evaluationIntro = byId("evaluation-intro");
 const clearButton = byId("clear-button");
 const exportButton = byId("export-button");
 const statusElement = byId("panel-status");
+const simulationStatus = byId("simulation-status");
 const announcerElement = byId("panel-announcer");
 const tabStateElement = byId("tab-state");
 const themeGroup = byId("theme-group");
 const themeRadios = Array.from(themeGroup.querySelectorAll("[role=radio]"));
 const approximateNotice = byId("approximate-notice");
+const truncatedNotice = byId("truncated-notice");
+const captureNote = byId("capture-note");
 const emptyState = byId("empty-state");
 const summaryBlock = byId("summary-block");
 const summarySeries = byId("summary-series");
@@ -74,12 +79,15 @@ const matrixContainer = byId("matrix-container");
 const matrixLegend = byId("matrix-legend");
 const conflictList = byId("conflict-list");
 const recommendationSection = byId("recommendation-section");
+const recommendationScheme = byId("recommendation-scheme");
+const compliantCard = byId("compliant-card");
 const recommendationTitle = byId("recommendation-title");
 const recommendationReason = byId("recommendation-reason");
 const recommendationNotice = byId("recommendation-notice");
 const recommendationOverview = byId("recommendation-overview");
 const recommendationBody = byId("recommendation-body");
-const recommendationMapping = byId("recommendation-mapping");
+const proposalExport = byId("proposal-export");
+const compliantExport = byId("compliant-export");
 const kpiIterations = byId("kpi-iterations");
 const kpiSwaps = byId("kpi-swaps");
 const kpiDelta = byId("kpi-delta");
@@ -89,9 +97,17 @@ const familySelect = byId("family-select");
 const seriesSummary = byId("series-summary");
 const seriesReview = byId("series-review");
 const seriesPanel = byId("series-panel");
+const seriesCaptureNote = byId("series-capture-note");
 const seriesSelectionList = byId("series-selection");
 const previewToggle = byId("preview-toggle");
 const previewNote = byId("preview-note");
+
+// Nota de la previsualización: la del HTML (gráficos en canvas no se
+// modifican) o la de no disponible, cuando ninguna serie considerada tiene
+// elementos recoloreables o la simulación va por captura.
+const PREVIEW_CANVAS_TEXT = previewNote.textContent.trim().replace(/\s+/g, " ");
+const PREVIEW_UNAVAILABLE_TEXT =
+  "No disponible en esta página: los gráficos están dibujados en canvas o vienen de una captura. La propuesta solo se puede ver en el panel y en el reporte.";
 
 const SIMULATION_LABELS = {
   none: "sin simulación",
@@ -129,6 +145,38 @@ const SIMULATION_HELP = {
   tritanopia: "En tritanopía la severidad no se gradúa (método de Brettel) y el filtro sobre la página es una aproximación; la paleta del panel usa el cálculo exacto."
 };
 
+// Resultado honesto cuando ninguna serie es un color de datos, según lo
+// que haya en la página: sin zonas de gráficos, zonas vacías o gráficos
+// con marcas pero sin ningún color cromático de datos.
+const NO_DATA_COLORS_TEXT =
+  "No se detectaron colores de datos en los gráficos. Revisa que el dashboard esté visible o usa la captura.";
+const NO_CHARTS_TEXT =
+  "Esta página no tiene gráficos que evaluar. El contraste de textos y bordes sigue disponible en Contraste.";
+const EMPTY_CHARTS_TEXT =
+  "Los gráficos de esta página no muestran datos todavía. Carga datos o cambia el filtro y vuelve a evaluar.";
+const NO_DATA_HEADINGS = {
+  "no-charts": ["Sin gráficos", NO_CHARTS_TEXT],
+  "empty-charts": ["Gráficos sin datos", EMPTY_CHARTS_TEXT],
+  "no-data-colors": ["Sin colores de datos", NO_DATA_COLORS_TEXT]
+};
+
+/**
+ * Causa de «sin colores de datos» según las zonas de la evaluación: sin
+ * gráficos (ni svg con marcas, ni canvas, ni imágenes grandes, ni iframes
+ * sin inyectar), gráficos vacíos (solo zonas sin marcas) o gráficos con
+ * marcas sin color cromático. Las evaluaciones sin resumen de zonas
+ * conservan el mensaje general.
+ */
+function noDataKind(evaluation) {
+  const stats = evaluation.stats || {};
+  const summary = stats.zoneSummary;
+  if (!summary) return "no-data-colors";
+  const charts = (summary.marked || 0) + (summary.images || 0) + (stats.iframesNotInjected || 0);
+  if (charts === 0 && (summary.empty || 0) === 0) return "no-charts";
+  if (charts === 0) return "empty-charts";
+  return "no-data-colors";
+}
+
 // Máximo de series en la matriz (coherente con el service worker).
 const MAX_SERIES_COLORS = 20;
 
@@ -148,6 +196,9 @@ const state = {
   family: "qualitative",
   recommendation: null,
   previewActive: false,
+  // Propuesta aplicada en la página: deficiencia y clave de la
+  // correspondencia; decide si un cambio de propuesta se refresca.
+  previewApplied: null,
   seriesSelection: new Map(),
   seriesNotes: new Map(),
   selectionSource: null,
@@ -156,7 +207,12 @@ const state = {
   suggestionAdopted: null,
   theme: null,
   // Desenlace bajo las tres deficiencias (sin simulación), para el reporte.
-  overview: null
+  overview: null,
+  // Ninguna serie es un color de datos: la recomendación no se calcula.
+  noDataColors: false,
+  noDataKind: "no-data-colors",
+  // Cómo se simula en la página: filtro CSS o capa por captura (WebGL, imágenes).
+  simulationMode: "filter"
 };
 
 /** Número con coma decimal. */
@@ -309,13 +365,24 @@ function renderStatusInto(element, kind, text) {
   element.hidden = false;
 }
 
-function setStatus(kind, text) {
-  renderStatusInto(statusElement, kind, text);
+/**
+ * Mensajes de estado por tarjeta: target "simulation" (simulación
+ * aplicada o retirada, cambio de página) va en «Simulación»; el resto
+ * (evaluación terminada o descartada, previsualización, reporte, errores)
+ * en «Evaluación de accesibilidad». Solo hay un mensaje a la vez y cada
+ * acción del usuario lo borra antes de hablar: nunca queda uno que
+ * contradiga el estado actual.
+ */
+function setStatus(kind, text, target = "evaluation") {
+  clearStatus();
+  renderStatusInto(target === "simulation" ? simulationStatus : statusElement, kind, text);
 }
 
 function clearStatus() {
-  statusElement.textContent = "";
-  statusElement.hidden = true;
+  for (const element of [statusElement, simulationStatus]) {
+    element.textContent = "";
+    element.hidden = true;
+  }
 }
 
 function announce(text) {
@@ -327,15 +394,30 @@ function verdictPill(kind, word) {
   return el("span", "pastilla pastilla--" + kind, word);
 }
 
+/**
+ * Campo relleno: el texto visible del valor sigue al select, cambie por
+ * teclado, ratón o asignación desde el código.
+ */
+function syncFieldValue(select) {
+  const field = select.closest(".campo");
+  const value = field ? field.querySelector(".val") : null;
+  const option = select.options[select.selectedIndex];
+  if (value && option) value.textContent = option.text;
+}
+
 function setEvaluateButtonState(done) {
-  evaluateButton.classList.toggle("prim", !done);
-  evaluateButton.classList.toggle("secu", done);
-  evaluateButton.textContent = done ? "Volver a evaluar" : "Extraer paleta y evaluar";
+  // Principal antes de evaluar; tonal («Volver a evaluar») después, y la
+  // lista de qué se analiza se oculta para ahorrar espacio.
+  evaluateButton.classList.toggle("btn-principal", !done);
+  evaluateButton.classList.toggle("btn-tonal", done);
+  evaluateButton.textContent = done ? "Volver a evaluar" : "Evaluar accesibilidad";
   evaluateButton.setAttribute(
     "aria-label",
-    done ? "Volver a extraer la paleta y evaluar esta pestaña"
-      : "Extraer la paleta de colores y evaluar la página actual"
+    done ? "Volver a evaluar la accesibilidad cromática de esta pestaña"
+      : "Evaluar la accesibilidad cromática de la página actual"
   );
+  evaluationScope.hidden = done;
+  evaluationIntro.hidden = done;
 }
 
 function renderTabState() {
@@ -413,6 +495,7 @@ function simulateColor(rgb) {
 function updateSimulationControls() {
   const { type, severity } = state.simulation;
   deficiencySelect.value = type;
+  syncFieldValue(deficiencySelect);
   severitySlider.value = String(severity);
   severityValue.textContent = formatNumber(severity, 1);
   const sliderDisabled = type === "tritanopia" || type === "none";
@@ -422,6 +505,7 @@ function updateSimulationControls() {
   const label = type === "none" ? "Sin simulación" : capitalize(SIMULATION_LABELS[type]);
   simulatedHeader.textContent = label;
   bandSimulatedLabel.textContent = label;
+  captureNote.hidden = !(type !== "none" && state.simulationMode === "capture");
 }
 
 function persistTabSimulation() {
@@ -485,11 +569,16 @@ async function syncPageFilter({ announce: sayIt = true } = {}) {
     if (!(response && response.ok)) {
       if (shouldApply) {
         state.filterOnPage = false;
-        setStatus("warning", "La simulación no se pudo aplicar sobre esta página (no es accesible); la paleta simulada del panel sí se actualiza.");
+        setStatus("warning", "La simulación no se pudo aplicar sobre esta página (no es accesible); la paleta simulada del panel sí se actualiza.", "simulation");
       }
       return;
     }
     state.filterOnPage = shouldApply;
+    const previousMode = state.simulationMode;
+    state.simulationMode = shouldApply && response.mode === "capture" ? "capture" : "filter";
+    updateSimulationControls();
+    // El modo decide si la previsualización está disponible.
+    if (previousMode !== state.simulationMode) renderRecommendation();
     if (!sayIt) return;
     announce(shouldApply
       ? "Simulación de " + SIMULATION_LABELS[type] + " aplicada sobre la página."
@@ -497,7 +586,7 @@ async function syncPageFilter({ announce: sayIt = true } = {}) {
   } catch (error) {
     if (shouldApply) {
       state.filterOnPage = false;
-      setStatus("warning", "No se pudo comunicar con la página para aplicar la simulación.");
+      setStatus("warning", "No se pudo comunicar con la página para aplicar la simulación.", "simulation");
     }
   }
 }
@@ -634,9 +723,13 @@ function buildContrastRow(group, kind) {
   figures.append(num);
   const detail = el("span", "qd");
   detail.append(el("code", "", group.foreground.hex), " sobre ", el("code", "", group.background.hex));
-  const parts = [" · " + group.count + (group.count === 1 ? " elemento" : " elementos")];
+  // Par aproximado: color muestreado (canvas o captura) sin elemento,
+  // comparado con el fondo dominante de su zona.
+  const parts = group.approximate
+    ? [" · aproximado: sin elemento, comparado con el fondo dominante" + (group.source === "capture" ? " de la captura" : " del canvas")]
+    : [" · " + group.count + (group.count === 1 ? " elemento" : " elementos")];
   if (group.largeText) parts.push("texto grande, umbral " + formatNumber(group.threshold, 1) + ":1");
-  if (group.examples && group.examples.length) parts.push(group.examples.slice(0, 3).join(", "));
+  if (!group.approximate && group.examples && group.examples.length) parts.push(group.examples.slice(0, 3).join(", "));
   detail.append(parts.join(" · "));
   figures.append(detail);
   row.append(figures);
@@ -823,14 +916,15 @@ function dominantBackgroundRgb() {
 // Descriptores de elementos estructurales de ejes y cuadrícula (D3/SVG).
 const STRUCTURAL_EXAMPLE_PATTERN = /^(svg|g|line|path\.domain)$|\.(domain|tick|eje|grid|axis)($|\b)/i;
 
-// Parámetros calibrados en vivo sobre los seis paneles del banco de
-// pruebas: piso de proporción 0,8 % (variantes de cola ≤ 0,79 %, series
-// reales desde 0,80 %); absorción ΔE00 9,0 entre originales (eslabón
-// máximo medido 8,3; series reales bien espaciadas ≥ 14), distinta del
-// umbral de confusión porque mide otra cosa; croma mínimo C*ab 6
-// (acromáticos de suavizado 0,4–2,5; serie real menos saturada ≈ 20).
-// Solo se absorben colores sin elemento; el absorbido queda desmarcado
-// con su nota y puede volver a marcarse.
+// Parámetros calibrados en vivo sobre los paneles del banco de pruebas:
+// absorción ΔE00 9,0 entre originales (eslabón máximo medido 8,3; series
+// reales bien espaciadas ≥ 14), distinta del umbral de confusión porque
+// mide otra cosa; croma mínimo C*ab 6 (acromáticos de suavizado 0,4–2,5;
+// serie real menos saturada ≈ 20); el piso de proporción 0,8 % solo se
+// aplica a evaluaciones antiguas sin marca de zona, porque la
+// cuantización cromática ya pliega las variantes de cola. Por defecto
+// solo se marcan los colores cromáticos dentro de las zonas de gráficos;
+// el desmarcado lleva su nota y puede volver a marcarse.
 const SERIES_MIN_SHARE = 0.008;
 const SERIES_ABSORB_DELTA = 9.0;
 const SERIES_MIN_CHROMA = 6;
@@ -862,9 +956,13 @@ function computeDefaultSelection(palette, seriesEntries) {
     if (entry.roles.includes("text")) note = "texto";
     else if (entry.roles.includes("background") && entry.hex === pageBgHex) note = "fondo de página";
     else if (hasElements && isStructuralEntry(entry)) note = "estructural (ejes o cuadrícula)";
-    else if (!hasElements && entry.share < SERIES_MIN_SHARE) {
+    else if (entryChroma(entry) < SERIES_MIN_CHROMA) {
+      note = hasElements ? "acromático: no es un color de datos" : "acromático: suavizado de texto o ejes";
+    } else if (entry.inCharts === false) {
+      note = entry.roles.includes("background") ? "fondo fuera de los gráficos" : "fuera de las zonas de gráficos";
+    } else if (!hasElements && entry.inCharts === undefined && entry.share < SERIES_MIN_SHARE) {
       note = "proporción " + formatNumber(entry.share * 100) + " %, bajo el piso de " + formatNumber(SERIES_MIN_SHARE * 100, 1) + " %";
-    } else if (!hasElements && entryChroma(entry) < SERIES_MIN_CHROMA) note = "acromático: suavizado de texto o ejes";
+    }
     return { entry, hasElements, note, accepted: false };
   });
   const pendingItems = () => items.filter((item) => !item.note && !item.hasElements && !item.accepted);
@@ -919,6 +1017,7 @@ function buildSeriesCheckbox(entry) {
     "Incluir el color " + entry.hex + " como serie de datos en la recomendación" +
     (defaultNote ? " (desmarcado por defecto: " + defaultNote + ")" : ""));
   checkbox.addEventListener("change", () => {
+    clearStatus();
     state.seriesSelection.set(entry.hex, checkbox.checked);
     persistSelection();
     // La selección alimenta la recomendación y las bandas; la matriz sigue con todo.
@@ -966,16 +1065,33 @@ function setSeriesPanelOpen(open, { focus = false } = {}) {
 // Previsualización
 // ------------------------------------------------------------------
 
+// La previsualización solo se aplica cuando el usuario enciende el
+// interruptor; ningún render la reaplica por su cuenta. El interruptor
+// refleja el estado real de la página: se consulta al content script al
+// abrir el panel, volver a la pestaña, volver a evaluar, limpiar o cambiar
+// de página.
+
 function setPreviewSwitch(checked) {
   previewToggle.setAttribute("aria-checked", String(checked));
 }
 
 function resetPreviewUi() {
   state.previewActive = false;
+  state.previewApplied = null;
   setPreviewSwitch(false);
 }
 
-async function sendPreview(active) {
+/** Clave de una correspondencia original → propuesta, para saber si cambió. */
+function mappingKey(recommendation) {
+  return recommendation.mapping.map((entry) => entry.originalHex + ">" + entry.proposedHex).join(",");
+}
+
+/**
+ * Aplica (active = true) o retira la previsualización en la página y deja
+ * el interruptor como quedó la página. Con silent no escribe el mensaje
+ * de estado, para que el llamador ponga el suyo.
+ */
+async function sendPreview(active, { silent = false } = {}) {
   const recommendation = state.recommendation;
   if (active && (!recommendation || recommendation.outcome !== "proposal")) return;
   const message = active
@@ -987,17 +1103,17 @@ async function sendPreview(active) {
   try {
     const response = await chrome.runtime.sendMessage(message);
     if (!active) {
-      state.previewActive = false;
-      setPreviewSwitch(false);
-      setStatus("ok", "Previsualización retirada: la página recuperó sus colores originales.");
+      resetPreviewUi();
+      if (!silent) setStatus("ok", "Previsualización retirada: la página recuperó sus colores originales.");
       return;
     }
     if (response && response.ok) {
       state.previewActive = true;
+      state.previewApplied = { type: recommendation.deficiencyType, key: mappingKey(recommendation) };
       setPreviewSwitch(true);
       const extra = response.entriesWithoutElements
         ? " · " + response.entriesWithoutElements + " colores sin elementos recoloreables (canvas)" : "";
-      setStatus("ok", "Previsualización aplicada: " + response.recolored + " propiedades recoloreadas" + extra + ".");
+      if (!silent) setStatus("ok", "Previsualización aplicada: " + response.recolored + " propiedades recoloreadas" + extra + ".");
     } else {
       resetPreviewUi();
       setStatus("warning", response && response.error === "no-registry"
@@ -1013,6 +1129,44 @@ async function sendPreview(active) {
 function stopPreviewIfActive() {
   if (state.previewActive) sendPreview(false);
   resetPreviewUi();
+}
+
+/**
+ * Habilita o deshabilita el interruptor según haya elementos recoloreables
+ * (DOM o SVG, en todos los marcos) con alguno de los colores de las series
+ * consideradas. Sin ninguno (gráficos en canvas, WebGL, imagen) o con la
+ * simulación por captura, el interruptor queda deshabilitado y la nota lo
+ * explica; con algunos recoloreables y otros en canvas, funciona y la nota
+ * del HTML se mantiene. Evaluaciones antiguas sin recuento: disponible.
+ */
+function updatePreviewAvailability(selectedSeries) {
+  const evaluation = state.evaluation;
+  const counts = evaluation && evaluation.recolorable;
+  const recolorable = counts ? selectedSeries.reduce((sum, color) => sum + (counts[color.hex] || 0), 0) : null;
+  const unavailable = recolorable === 0 || state.simulationMode === "capture";
+  previewToggle.disabled = unavailable;
+  previewToggle.setAttribute("aria-disabled", String(unavailable));
+  if (unavailable) {
+    if (state.previewActive) stopPreviewIfActive();
+    previewNote.textContent = PREVIEW_UNAVAILABLE_TEXT;
+    previewNote.hidden = false;
+    return;
+  }
+  previewNote.textContent = PREVIEW_CANVAS_TEXT;
+  previewNote.hidden = !(evaluation.stats && evaluation.stats.canvasTotal > 0);
+}
+
+/**
+ * La propuesta cambió (familia, series consideradas o umbral) con el
+ * interruptor encendido y para la misma deficiencia: se refresca en la
+ * página para que lo que se ve siga siendo lo que dice el panel. Si la
+ * deficiencia es otra, no se toca: eso lo resuelve el cambio de tipo.
+ */
+function refreshPreviewIfChanged(recommendation) {
+  if (!state.previewActive || !state.previewApplied) return;
+  if (state.previewApplied.type !== recommendation.deficiencyType) return;
+  if (state.previewApplied.key === mappingKey(recommendation)) return;
+  sendPreview(true);
 }
 
 // ------------------------------------------------------------------
@@ -1035,12 +1189,321 @@ function setRecommendationHeading(title, reason) {
   recommendationReason.textContent = reason;
 }
 
-function renderRecommendationOverview(selectedSeries, seriesFailures) {
+/** Aviso cuando alguna serie considerada quedó sin contraste evaluado. */
+function unevaluatedText(count) {
+  return "No se pudo evaluar el contraste de " + count + (count === 1 ? " serie considerada" : " series consideradas") +
+    " (sin elemento ni fondo conocido): no se puede afirmar que la paleta cumpla.";
+}
+
+/**
+ * Estado 1.4.11 de cada serie considerada: fila propia (elemento), fila
+ * aproximada (canvas o captura contra el fondo dominante) o sin evaluar.
+ * Una serie cuenta como evaluada si alguna fila de rol serie tiene su
+ * primer plano a menos de ΔE00 2,5; pasa solo si todas sus filas pasan.
+ */
+function seriesContrastStatus(selectedSeries, contrast) {
+  const rows = (contrast.graphics || []).filter((group) => (group.roles || []).includes("series"));
+  const rowLabs = rows.map((group) => rgbToLab(group.foreground.rgb));
+  const status = new Map();
+  for (const color of selectedSeries) {
+    const matches = rows.filter((group, index) => ciede2000(rowLabs[index], color.lab) < 2.5);
+    if (!matches.length) {
+      status.set(color.hex, { evaluated: false, passes: false, approximate: false, ratio: null });
+      continue;
+    }
+    const worst = matches.reduce((a, b) => (a.ratio <= b.ratio ? a : b));
+    status.set(color.hex, {
+      evaluated: true,
+      passes: matches.every((group) => group.passes),
+      approximate: matches.every((group) => group.approximate === true),
+      ratio: worst.ratio
+    });
+  }
+  return status;
+}
+
+/**
+ * Una sola serie considerada: no hay pares que comparar, así que el
+ * veredicto depende solo de su contraste contra el fondo. Cumple → tarjeta
+ * «Cumple» con la nota; incumple o sin evaluar → sin recomendación.
+ */
+function renderSingleSeries(color, status, outsideFailures) {
+  stopPreviewIfActive();
+  state.overview = null;
+  const note = "Una sola serie: no hay pares que comparar.";
+  const hint = state.series.length >= 2 ? " Marca más series para compararlas." : "";
+  if (status.evaluated && status.passes) {
+    if (state.simulation.type === "none") {
+      state.recommendation = null;
+      renderRecommendationOverview([color], 0, { single: true });
+      return;
+    }
+    const result = {
+      outcome: "compliant",
+      deficiencyType: state.simulation.type,
+      threshold: state.threshold,
+      minDelta: null,
+      singleSeries: true,
+      contrastApproximate: status.approximate ? 1 : 0
+    };
+    state.recommendation = result;
+    renderCompliantCard(result, [color], SIMULATION_LABELS[state.simulation.type], { approximate: result.contrastApproximate, single: true });
+    if (outsideFailures > 0) renderOutsideFailures(outsideFailures);
+    renderPaletteExport(compliantExport, { title: "Paleta accesible", entries: [{ hex: color.hex }], paired: false });
+    return;
+  }
+  state.recommendation = {
+    outcome: "insufficient-series",
+    singleSeries: true,
+    unevaluatedSeries: status.evaluated ? 0 : 1,
+    ratio: status.ratio
+  };
+  if (!status.evaluated) {
+    setRecommendationHeading("Sin recomendación", note + " No se pudo evaluar su contraste contra el fondo." + hint);
+    renderStatusInto(recommendationNotice, "warning", unevaluatedText(1));
+    return;
+  }
+  setRecommendationHeading("Sin recomendación",
+    note + " Su contraste contra el fondo incumple 3:1 (" + formatNumber(status.ratio) + ":1); el detalle está en Contraste." + hint);
+}
+
+function renderOutsideFailures(outsideFailures) {
+  renderStatusInto(recommendationNotice, "warning",
+    "Quedan " + outsideFailures + (outsideFailures === 1 ? " incumplimiento" : " incumplimientos") +
+    " de contraste fuera del conjunto de series (texto, bordes, ejes): una paleta de series no puede corregirlos; el detalle está en Contraste.");
+}
+
+/**
+ * Tarjeta «Cumple sin reemplazo» (diseño de la maqueta de cierre, v5):
+ * sello, contexto, título, texto, dos bandas (visión típica y la
+ * deficiencia a severidad máxima, en el mismo orden), tres cifras y la
+ * regla del par más cercano frente al umbral, de 0 a 50 como la escala
+ * de Distinguibilidad. Todo sale de la evaluación: nada es fijo salvo
+ * los textos. Sustituye al título y al párrafo del esquema.
+ */
+function renderCompliantCard(result, selectedSeries, deficiency, { approximate = 0, single = false } = {}) {
+  recommendationScheme.hidden = true;
+  compliantCard.replaceChildren();
+  const label = capitalize(deficiency);
+  const config = { type: result.deficiencyType, severity: 1 };
+  const count = selectedSeries.length;
+  const threshold = result.threshold;
+  const margin = single ? 0 : result.minDelta - threshold;
+  const percent = (value) => (Math.min(value, SCALE_MAX) / SCALE_MAX) * 100 + "%";
+
+  const head = el("div", "cabecera");
+  head.append(el("span", "sello", "Cumple"), el("span", "contexto", label + " (severidad máxima)"));
+  const title = el("h3", "", "Tu paleta ya es accesible");
+  const lead = el("p", "lead", single
+    ? "Una sola serie: no hay pares que comparar. Su contraste contra el fondo cumple 3:1 y no hace falta cambiar colores."
+    : "Las " + count + " series se distinguen entre sí y ninguno de sus pares falla el contraste. No hace falta cambiar colores.");
+
+  const bands = el("div", "bandas-cumple");
+  const original = el("div", "banda");
+  fillBand(original, selectedSeries.map((color) => color.hex));
+  const simulated = el("div", "banda");
+  fillBand(simulated, selectedSeries.map((color) => rgbToHex(simulateForConfig(color.rgb, config))));
+  bands.append(el("span", "", "Visión típica"), original, el("span", "", label), simulated);
+
+  const figures = el("div", "cifras-cumple");
+  const tile = (value, text) => {
+    const node = el("div", "cifra");
+    node.append(el("span", "v mono", value), el("span", "e", text));
+    return node;
+  };
+  figures.append(
+    tile(single ? "—" : formatNumber(result.minDelta), "ΔE00 mínimo"),
+    tile("0", "fallos de contraste"),
+    tile(String(count), count === 1 ? "serie evaluada" : "series evaluadas")
+  );
+
+  // Series sin elemento (canvas o captura): su contraste se aproximó
+  // contra el fondo dominante y la tarjeta lo declara.
+  const note = approximate > 0
+    ? el("p", "nota-cumple", "Contraste aproximado: " +
+      (approximate === 1 ? "1 serie sin elemento se comparó" : approximate + " series sin elemento se compararon") +
+      " con el fondo dominante.")
+    : null;
+
+  const ruler = el("div", "margen");
+  const rulerTitle = el("div", "tit");
+  rulerTitle.append(
+    el("span", "", "Par más cercano frente al umbral " + formatNumber(threshold, 1)),
+    el("b", "mono", (margin >= 0 ? "+" : "") + formatNumber(margin))
+  );
+  // La regla lleva aria-hidden: el margen ya va en texto.
+  const track = el("div", "regla");
+  track.setAttribute("aria-hidden", "true");
+  const zone = el("div", "zona");
+  zone.style.width = percent(threshold);
+  const point = el("div", "punto");
+  point.style.left = percent(result.minDelta);
+  track.append(zone, point);
+  const axis = el("div", "eje mono");
+  axis.setAttribute("aria-hidden", "true");
+  const tick = (value, left) => {
+    const node = el("span", "", formatNumber(value, Number.isInteger(value) ? 0 : 1));
+    node.style.left = left;
+    return node;
+  };
+  axis.append(tick(0, "0"), tick(threshold, percent(threshold)), tick(SCALE_MAX, "100%"));
+  ruler.append(rulerTitle, track, axis);
+
+  compliantCard.append(head, title, lead, bands, figures);
+  if (note) compliantCard.append(note);
+  // Con una sola serie no hay par más cercano que situar en la regla.
+  if (!single) compliantCard.append(ruler);
+  compliantCard.hidden = false;
+}
+
+// ------------------------------------------------------------------
+// Copiar colores y descargar el tema de Power BI (maqueta de copiar).
+// Cada hex propuesto es un botón que copia solo el hex en mayúsculas;
+// «Copiar todos» copia uno por línea en el orden de la tabla; el enlace
+// descarga tema-accesible-powerbi.json (solo name y dataColors) con
+// Blob y <a download>, sin permiso de descargas. Un único estado temporal
+// («Copiado», «Copiados N colores», «Tema de Power BI descargado») a la
+// vez, durante 2 s; otro clic reinicia el temporizador.
+// ------------------------------------------------------------------
+
+const FEEDBACK_MS = 2000;
+const POWER_BI_THEME_NAME = "Paleta accesible - Evaluador cromatico";
+const POWER_BI_THEME_FILE = "tema-accesible-powerbi.json";
+const POWER_BI_NOTE =
+  "Impórtalo en Power BI desde Diseño > Importar tema. Los colores se asignan por orden de serie y no cambian las series coloreadas a mano.";
+let feedbackTimer = null;
+let feedbackReset = null;
+
+/** Muestra un estado temporal; el anterior se deshace antes para no mezclar estados. */
+function showFeedback(apply, reset) {
+  if (feedbackReset) {
+    clearTimeout(feedbackTimer);
+    feedbackReset();
+  }
+  apply();
+  feedbackReset = reset;
+  feedbackTimer = setTimeout(() => {
+    reset();
+    feedbackReset = null;
+    feedbackTimer = null;
+  }, FEEDBACK_MS);
+}
+
+async function copyText(text, statusElement) {
+  try {
+    await navigator.clipboard.writeText(text);
+    statusElement.hidden = true;
+    return true;
+  } catch (error) {
+    renderStatusInto(statusElement, "warning", "No se pudo copiar; selecciona el texto y cópialo con Ctrl+C");
+    return false;
+  }
+}
+
+/** Tema de Power BI: exactamente name y dataColors, con sangría de dos espacios. */
+function powerBiTheme(hexes) {
+  return "{\n  \"name\": \"" + POWER_BI_THEME_NAME + "\",\n  \"dataColors\": [" +
+    hexes.map((hex) => "\"" + hex + "\"").join(", ") + "]\n}";
+}
+
+/** Descarga un archivo de texto con Blob y <a download>; revoca la URL después. */
+function downloadTextFile(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Bloque «Paleta propuesta» / «Paleta accesible»: título con «Copiar
+ * todos», tabla (original → propuesta, o solo los colores), descarga del
+ * tema de Power BI, nota y región de estado para los errores.
+ */
+function renderPaletteExport(container, { title, entries, paired }) {
+  container.replaceChildren();
+  const hexes = entries.map((entry) => entry.hex.toUpperCase());
+  const status = el("p", "estado");
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  status.hidden = true;
+
+  const head = el("div", "map-cab");
+  const heading = el("h3", "", title);
+  const copyAll = el("button", "btn-sm", "Copiar todos");
+  copyAll.type = "button";
+  copyAll.setAttribute("aria-label", "Copiar todos los colores de la paleta, uno por línea");
+  copyAll.addEventListener("click", async () => {
+    if (!(await copyText(hexes.join("\n"), status))) return;
+    const text = hexes.length === 1 ? "Copiado 1 color" : "Copiados " + hexes.length + " colores";
+    showFeedback(() => { copyAll.textContent = text; copyAll.classList.add("ok"); },
+      () => { copyAll.textContent = "Copiar todos"; copyAll.classList.remove("ok"); });
+    announce(text);
+  });
+  head.append(heading, copyAll);
+
+  const table = el("div", "map" + (paired ? "" : " map--simple"));
+  const header = el("div", "cab-t");
+  header.setAttribute("aria-hidden", "true");
+  if (paired) header.append(el("span", "", "Original"), el("span", "", "Propuesta"));
+  else header.append(el("span", "", "Series consideradas"));
+  table.append(header);
+  entries.forEach((entry, index) => {
+    const hex = hexes[index];
+    const row = el("div", "r");
+    if (paired) {
+      const original = el("div", "orig");
+      original.append(swatch(entry.originalHex), el("span", "mono", entry.originalHex));
+      row.append(original);
+    }
+    const button = el("button", "hex");
+    button.type = "button";
+    button.setAttribute("aria-label", "Copiar " + hex);
+    const accent = el("span", "acc", "Copiar");
+    button.append(swatch(hex), el("span", "mono", hex), accent);
+    button.addEventListener("click", async () => {
+      if (!(await copyText(hex, status))) return;
+      showFeedback(() => { accent.textContent = "Copiado"; button.classList.add("ok"); },
+        () => { accent.textContent = "Copiar"; button.classList.remove("ok"); });
+      announce("Copiado " + hex);
+    });
+    row.append(button);
+    table.append(row);
+  });
+
+  const pbi = el("div", "pbi");
+  const download = el("button", "enlace", "Descargar tema de Power BI (.json)");
+  download.type = "button";
+  download.addEventListener("click", () => {
+    try {
+      downloadTextFile(POWER_BI_THEME_FILE, powerBiTheme(hexes), "application/json;charset=utf-8");
+      status.hidden = true;
+    } catch (error) {
+      renderStatusInto(status, "warning", "No se pudo descargar el tema");
+      return;
+    }
+    showFeedback(() => { download.textContent = "Tema de Power BI descargado"; download.classList.add("ok"); },
+      () => { download.textContent = "Descargar tema de Power BI (.json)"; download.classList.remove("ok"); });
+    announce("Descargado el tema de Power BI");
+  });
+  pbi.append(download, el("p", "nota", POWER_BI_NOTE));
+
+  container.append(head, table, pbi, status);
+  container.hidden = false;
+}
+
+function renderRecommendationOverview(selectedSeries, seriesFailures, { single = false } = {}) {
   recommendationOverview.replaceChildren();
   recommendationOverview.hidden = false;
   state.overview = [];
   for (const type of ["protanopia", "deuteranopia", "tritanopia"]) {
-    const result = recommendPalette(recommendationInput(type, selectedSeries, seriesFailures));
+    // Una sola serie que cumple contraste: «Cumple» sin ΔE00 que medir.
+    const result = single
+      ? { outcome: "compliant", minDelta: null, singleSeries: true }
+      : recommendPalette(recommendationInput(type, selectedSeries, seriesFailures));
     state.overview.push({
       type,
       outcome: result.outcome,
@@ -1056,7 +1519,8 @@ function renderRecommendationOverview(selectedSeries, seriesFailures) {
     let detail;
     if (result.outcome === "compliant") {
       pill = verdictPill("cumple", "Cumple");
-      detail = "ΔE00 mínimo " + formatNumber(result.minDelta) + " sin reemplazo";
+      detail = result.minDelta === null ? "una sola serie: sin pares que comparar"
+        : "ΔE00 mínimo " + formatNumber(result.minDelta) + " sin reemplazo";
     } else if (result.outcome === "proposal") {
       pill = verdictPill("neutra", "Propuesta");
       detail = "esquema " + result.scheme.name;
@@ -1084,14 +1548,32 @@ function renderRecommendation() {
   }
   recommendationSection.hidden = false;
   familySelect.value = state.family;
+  syncFieldValue(familySelect);
   ensureSeriesSelection();
   recommendationOverview.hidden = true;
   recommendationNotice.hidden = true;
   recommendationBody.hidden = true;
+  recommendationScheme.hidden = false;
+  compliantCard.hidden = true;
+  compliantExport.hidden = true;
 
   const selectedSeries = state.series.filter((color) => isSeriesSelected(color.hex));
   seriesSummary.textContent = selectedSeries.length + " de " + state.series.length +
     (state.series.length === 1 ? " serie considerada" : " series consideradas");
+
+  // Sin colores de datos (ninguna serie cromática en los gráficos y nada
+  // marcado a mano) no hay nada que recomendar: se dice, sin «Cumple».
+  const dataCandidates = state.series.filter((color) => !state.seriesNotes.get(color.hex));
+  state.noDataColors = dataCandidates.length === 0 && selectedSeries.length === 0;
+  if (state.noDataColors) {
+    stopPreviewIfActive();
+    state.recommendation = null;
+    state.overview = null;
+    state.noDataKind = noDataKind(evaluation);
+    const [heading, text] = NO_DATA_HEADINGS[state.noDataKind];
+    setRecommendationHeading(heading, text);
+    return;
+  }
 
   const contrast = evaluation.contrast || { text: [], graphics: [] };
   const selectedLabs = selectedSeries.map((color) => color.lab);
@@ -1105,15 +1587,35 @@ function renderRecommendation() {
     selectedLabs.some((lab) => ciede2000(rgbToLab(group.foreground.rgb), lab) < 2.5)).length;
   const outsideFailures = totalFailures - seriesFailures;
 
+  // «Cumple» exige que el contraste de TODAS las series consideradas se
+  // haya evaluado y pase: las series sin fila (ni propia ni aproximada)
+  // bloquean la salida temprana igual que un fallo, y se avisa.
+  const seriesStatus = seriesContrastStatus(selectedSeries, contrast);
+  const unevaluated = selectedSeries.filter((color) => !seriesStatus.get(color.hex).evaluated).length;
+  const approximateSeries = selectedSeries.filter((color) => seriesStatus.get(color.hex).approximate).length;
+  const blockers = seriesFailures + unevaluated;
+
+  // Series que vienen solo de la captura: la extensión no puede saber
+  // cuáles son iconos; la nota junto a las casillas lo dice.
+  seriesCaptureNote.hidden = !state.series.some((color) =>
+    (color.levels || []).includes("capture") && !(color.levels || []).includes("dom-svg"));
+
+  if (selectedSeries.length === 1) {
+    renderSingleSeries(selectedSeries[0], seriesStatus.get(selectedSeries[0].hex), outsideFailures);
+    return;
+  }
+
   if (state.simulation.type === "none") {
     stopPreviewIfActive();
     state.recommendation = null;
-    renderRecommendationOverview(selectedSeries, seriesFailures);
+    renderRecommendationOverview(selectedSeries, blockers);
     return;
   }
   state.overview = null;
 
-  const result = recommendPalette(recommendationInput(state.simulation.type, selectedSeries, seriesFailures));
+  const result = recommendPalette(recommendationInput(state.simulation.type, selectedSeries, blockers));
+  result.unevaluatedSeries = unevaluated;
+  result.contrastApproximate = approximateSeries;
   state.recommendation = result;
   const deficiency = SIMULATION_LABELS[result.deficiencyType] || SIMULATION_LABELS[state.simulation.type];
 
@@ -1126,14 +1628,10 @@ function renderRecommendation() {
   }
   if (result.outcome === "compliant") {
     stopPreviewIfActive();
-    setRecommendationHeading("Cumple sin reemplazo",
-      "La paleta considerada cumple bajo " + deficiency + " a severidad máxima: sin fallos de contraste en sus pares y ΔE00 mínimo " +
-      formatNumber(result.minDelta) + " (umbral " + formatNumber(result.threshold, 1) + ").");
-    if (outsideFailures > 0) {
-      renderStatusInto(recommendationNotice, "warning",
-        "Quedan " + outsideFailures + (outsideFailures === 1 ? " incumplimiento" : " incumplimientos") +
-        " de contraste fuera del conjunto de series (texto, bordes, ejes): una paleta de series no puede corregirlos; el detalle está en Contraste.");
-    }
+    renderCompliantCard(result, selectedSeries, deficiency, { approximate: approximateSeries });
+    if (outsideFailures > 0) renderOutsideFailures(outsideFailures);
+    // La paleta que ya cumple también se puede copiar y llevar a Power BI.
+    renderPaletteExport(compliantExport, { title: "Paleta accesible", entries: selectedSeries.map((color) => ({ hex: color.hex })), paired: false });
     return;
   }
   if (result.outcome === "redesign") {
@@ -1145,6 +1643,7 @@ function renderRecommendation() {
       : "El dashboard tiene " + result.seriesCount + " series y el mayor esquema " + familyLabel + " acreditado para " +
       deficiency + " dispone de " + result.maxAvailable + " colores.");
     renderStatusInto(recommendationNotice, "warning",
+      (unevaluated > 0 ? unevaluatedText(unevaluated) + " " : "") +
       "Se recomienda reducir series, agrupar categorías o reforzar con etiquetas y formas.");
     return;
   }
@@ -1153,25 +1652,21 @@ function renderRecommendation() {
   setRecommendationHeading(result.scheme.name,
     "Primer esquema acreditado para " + deficiency + " con capacidad " + result.scheme.size + " ≥ " +
     result.mapping.length + " series que superó la revalidación.");
+  if (unevaluated > 0) renderStatusInto(recommendationNotice, "warning", unevaluatedText(unevaluated));
   kpiIterations.textContent = String(result.revalidation.iterations);
   kpiSwaps.textContent = String(result.revalidation.swaps);
   kpiDelta.textContent = formatNumber(result.revalidation.minDelta);
   fillBand(bandRecOriginal, result.mapping.map((entry) => entry.originalHex));
   fillBand(bandRecProposed, result.mapping.map((entry) => entry.proposedHex));
 
-  recommendationMapping.replaceChildren();
-  for (const entry of result.mapping) {
-    const row = el("div", "r");
-    const original = el("div");
-    original.append(swatch(entry.originalHex), el("span", "mono", entry.originalHex));
-    const proposed = el("div");
-    proposed.append(swatch(entry.proposedHex), el("span", "mono", entry.proposedHex));
-    row.append(original, proposed);
-    recommendationMapping.append(row);
-  }
-  previewNote.hidden = !(evaluation.stats && evaluation.stats.canvasTotal > 0);
+  renderPaletteExport(proposalExport, {
+    title: "Paleta propuesta",
+    entries: result.mapping.map((entry) => ({ originalHex: entry.originalHex, hex: entry.proposedHex })),
+    paired: true
+  });
+  updatePreviewAvailability(selectedSeries);
   recommendationBody.hidden = false;
-  if (state.previewActive) sendPreview(true);
+  refreshPreviewIfChanged(result);
 }
 
 // ------------------------------------------------------------------
@@ -1188,6 +1683,7 @@ function render() {
     contrastSection.hidden = true;
     distSection.hidden = true;
     approximateNotice.hidden = true;
+    truncatedNotice.hidden = true;
     recommendationSection.hidden = true;
     exportButton.hidden = true;
     resetPreviewUi();
@@ -1201,11 +1697,13 @@ function render() {
   contrastSection.hidden = false;
   distSection.hidden = false;
   approximateNotice.hidden = evaluation.approximate !== true;
+  truncatedNotice.hidden = !(evaluation.stats && evaluation.stats.truncated === true);
 
   const paletteSize = (evaluation.palette || []).length;
   paletteCount.textContent = paletteSize + (paletteSize === 1 ? " color" : " colores");
   const levelNames = (evaluation.levels || []).map((level) => LEVEL_LABELS[level] || level);
-  levelsElement.textContent = "Extracción: " + (levelNames.join(" + ") || "ninguna") + ".";
+  const frames = evaluation.stats && evaluation.stats.frames > 1 ? " · " + evaluation.stats.frames + " marcos" : "";
+  levelsElement.textContent = "Extracción: " + (levelNames.join(" + ") || "ninguna") + frames + ".";
 
   renderPalette();
   const contrast = evaluation.contrast || { text: [], graphics: [] };
@@ -1229,7 +1727,7 @@ function render() {
   if (adopted) {
     setStatus("info", "Se aplicó la última simulación usada (" + SIMULATION_LABELS[adopted.type] +
       (adopted.type === "tritanopia" ? "" : " " + formatNumber(adopted.severity, 1)) +
-      ") como valor sugerido; cámbiala en «Tipo de deficiencia» si no la quieres.");
+      ") como valor sugerido; cámbiala en «Tipo de deficiencia» si no la quieres.", "simulation");
   }
   setEvaluateButtonState(true);
 }
@@ -1251,6 +1749,9 @@ async function runEvaluation() {
         await syncPageFilter({ announce: false });
       }
     }
+    // La previsualización se retira antes de leer y queda apagada después:
+    // la recomendación nueva se muestra sin aplicarla.
+    if (state.previewActive) await sendPreview(false, { silent: true });
     const response = await chrome.runtime.sendMessage({ type: "RUN_EVALUATION", tabId: state.tabId });
     if (!response) {
       setStatus("error", ERROR_MESSAGES.unexpected);
@@ -1278,6 +1779,8 @@ async function runEvaluation() {
     saveUiState();
     restoreSectionState();
     render();
+    // El interruptor queda como esté la página de verdad (apagado).
+    await reconcilePageState();
   } catch (error) {
     setStatus("error", "No se pudo comunicar con el proceso en segundo plano. Vuelve a intentarlo.");
   } finally {
@@ -1301,12 +1804,21 @@ async function reconcilePageState() {
   if (filter.active && filter.config && filter.config.type in SIMULATION_LABELS) {
     state.simulation = { type: filter.config.type, severity: typeof filter.config.severity === "number" ? filter.config.severity : 1 };
     state.filterOnPage = true;
+    state.simulationMode = filter.mode === "capture" ? "capture" : "filter";
   } else {
+    // La página no tiene filtro ni capa: el selector vuelve a «Ninguna».
     state.filterOnPage = false;
+    state.simulationMode = "filter";
     if (state.simulation.type !== "none") state.simulation = { type: "none", severity: state.simulation.severity };
   }
   persistTabSimulation();
   state.previewActive = previewActive;
+  // Si la página tiene la previsualización, lo aplicado es la propuesta
+  // vigente de esta deficiencia (si no hay propuesta, se desconoce).
+  const recommendation = state.recommendation;
+  state.previewApplied = previewActive && recommendation && recommendation.outcome === "proposal"
+    ? { type: recommendation.deficiencyType, key: mappingKey(recommendation) }
+    : null;
   setPreviewSwitch(previewActive);
   updateSimulationControls();
 }
@@ -1357,11 +1869,18 @@ async function loadEvaluation() {
 
 evaluateButton.addEventListener("click", runEvaluation);
 
+// Campos rellenos: el valor visible sigue al select en cada cambio.
+for (const select of [deficiencySelect, familySelect]) {
+  select.addEventListener("change", () => syncFieldValue(select));
+  syncFieldValue(select);
+}
+
 // RF08: «Exportar PDF» abre el reporte como página propia
 // de la extensión en una pestaña nueva, con los datos pasados por el
 // almacenamiento de sesión; esa página lanza el diálogo de impresión y el
 // PDF lo genera el propio navegador (Guardar como PDF).
 exportButton.addEventListener("click", async () => {
+  clearStatus();
   const evaluation = state.evaluation;
   if (!evaluation || !evaluation.ok) return;
   const data = buildReportData({
@@ -1377,7 +1896,9 @@ exportButton.addEventListener("click", async () => {
     distSimulated: state.distSimulated,
     distOriginal: state.distOriginal,
     recommendation: state.recommendation,
-    overview: state.overview
+    overview: state.overview,
+    noDataColors: state.noDataColors,
+    noDataKind: state.noDataKind
   });
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   try {
@@ -1390,6 +1911,7 @@ exportButton.addEventListener("click", async () => {
 });
 
 clearButton.addEventListener("click", async () => {
+  clearStatus();
   if (state.previewActive) {
     try { await chrome.runtime.sendMessage({ type: "CLEAR_PREVIEW", tabId: state.tabId }); } catch (error) { /* sin página */ }
   }
@@ -1399,6 +1921,7 @@ clearButton.addEventListener("click", async () => {
   resetPreviewUi();
   state.simulation = { type: "none", severity: 1 };
   state.filterOnPage = false;
+  state.simulationMode = "filter";
   if (state.tabId) {
     try {
       await chrome.storage.session.remove(["evaluation:" + state.tabId, "ui:" + state.tabId, "sim:" + state.tabId]);
@@ -1410,20 +1933,38 @@ clearButton.addEventListener("click", async () => {
   state.ui = { family: null, collapsed: {}, scrollY: 0, selection: null, selectionEvaluatedAt: null };
   render();
   updateSimulationControls();
-  setStatus("ok", "Todo limpio: simulación y previsualización retiradas y evaluación descartada.");
+  // Lo que diga la página manda: si algo no se pudo retirar, el panel lo muestra.
+  await reconcilePageState();
+  setStatus("ok", "Todo limpio: simulación, previsualización y evaluación retiradas.");
 });
 
-deficiencySelect.addEventListener("change", () => {
-  state.simulation.type = deficiencySelect.value in SIMULATION_LABELS ? deficiencySelect.value : "none";
+// Cambiar el tipo con la previsualización activa la retira (en todos los
+// marcos y en la capa por captura), deja el interruptor apagado y lo dice;
+// la recomendación se recalcula para el tipo nuevo sin aplicarse.
+deficiencySelect.addEventListener("change", async () => {
+  clearStatus();
+  const previous = state.simulation.type;
+  const next = deficiencySelect.value in SIMULATION_LABELS ? deficiencySelect.value : "none";
+  const hadPreview = state.previewActive && next !== previous;
+  if (hadPreview) await sendPreview(false, { silent: true });
+  state.simulation.type = next;
   onSimulationChanged();
+  if (hadPreview && next !== "none") {
+    setStatus("info", "Cambiaste a " + SIMULATION_LABELS[next] + ": se retiró la previsualización. La recomendación se recalculó para " +
+      SIMULATION_LABELS[next] + "; actívala de nuevo para verla.");
+  } else if (hadPreview) {
+    setStatus("ok", "Previsualización retirada: la página recuperó sus colores originales.");
+  }
 });
 
 severitySlider.addEventListener("input", () => {
+  clearStatus();
   state.simulation.severity = Number(severitySlider.value);
   onSimulationChanged();
 });
 
 familySelect.addEventListener("change", () => {
+  clearStatus();
   state.family = familySelect.value === "sequential" ? "sequential" : "qualitative";
   state.ui.family = state.family;
   saveUiState();
@@ -1433,6 +1974,7 @@ familySelect.addEventListener("change", () => {
 // «Ocultar»/«Revisar»: pliega o abre las casillas de series consideradas;
 // como con las secciones, el plegado se recuerda solo en esta pestaña.
 seriesReview.addEventListener("click", () => {
+  clearStatus();
   const open = seriesPanel.hidden;
   setSeriesPanelOpen(open, { focus: true });
   if (open) delete state.ui.collapsed.series;
@@ -1441,10 +1983,12 @@ seriesReview.addEventListener("click", () => {
 });
 
 previewToggle.addEventListener("click", () => {
+  clearStatus();
   sendPreview(previewToggle.getAttribute("aria-checked") !== "true");
 });
 
 thresholdInput.addEventListener("input", () => {
+  clearStatus();
   const value = Number(thresholdInput.value);
   if (Number.isFinite(value) && value >= 1 && value <= 30) {
     state.threshold = value;
@@ -1484,7 +2028,31 @@ for (const section of document.querySelectorAll("details.bloque")) {
 
 window.addEventListener("scroll", scheduleScrollSave, { passive: true });
 
+/**
+ * La página de esta pestaña cambió (recarga, navegación o cambio de ruta):
+ * el service worker ya retiró los efectos y descartó la evaluación; aquí
+ * el selector vuelve a «Ninguna», el estado se vacía y se avisa.
+ */
+function onPageChanged() {
+  state.simulation = { type: "none", severity: 1 };
+  state.filterOnPage = false;
+  state.simulationMode = "filter";
+  resetPreviewUi();
+  state.evaluation = null;
+  state.selectionSource = null;
+  state.ui = { family: null, collapsed: {}, scrollY: 0, selection: null, selectionEvaluatedAt: null };
+  render();
+  updateSimulationControls();
+  setStatus("info", "La página cambió: se restableció «Ninguna» y se descartó la evaluación anterior.", "simulation");
+  // Confirma con la página que filtro y previsualización ya no están.
+  reconcilePageState();
+}
+
 chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "session" && state.tabId && changes["cambio:" + state.tabId] && changes["cambio:" + state.tabId].newValue) {
+    onPageChanged();
+    return;
+  }
   if (areaName === "session" && state.tabId && changes["evaluation:" + state.tabId]) {
     state.evaluation = changes["evaluation:" + state.tabId].newValue || null;
     render();

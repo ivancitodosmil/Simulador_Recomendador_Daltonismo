@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel Imagen (Banco de pruebas)</title>
+  <style>
+    /* Panel imagen: el dashboard es una captura PNG incrustada que ocupa la mayor
+       parte de la vista. No hay colores declarados que leer: la extension debe
+       usar la captura (nivel 3) y simular por captura. El mismo PNG puede
+       abrirse directamente en una pestaña (documento de imagen). */
+    body { margin: 0; background: #FFFFFF; color: #21262B; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+    header { padding: 14px 24px 6px; }
+    h1 { margin: 0 0 4px; font-size: 1.3rem; }
+    .subtitulo { margin: 0; color: #5A6572; font-size: 0.9rem; }
+    figure { margin: 8px 24px; }
+    img { display: block; width: 100%; max-width: 1100px; height: auto; border: 1px solid #E3E6EA; border-radius: 6px; }
+    figcaption { margin-top: 6px; font-size: 0.85rem; color: #5A6572; }
+    footer { padding: 0 24px 16px; font-size: 0.85rem; }
+    footer a { color: #0B57D0; }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Panel Imagen (dashboard como PNG)</h1>
+    <p class="subtitulo">Captura del Panel SVG incrustada como imagen: ningún color está declarado en el DOM.</p>
+  </header>
+  <figure>
+    <img src="dashboard.png" alt="Captura del Panel SVG: barras, líneas, área y pastel de ventas por región" width="1100" height="720">
+    <figcaption>Abre también <a href="dashboard.png">dashboard.png</a> directamente para probar un documento de imagen.</figcaption>
+  </figure>
+  <footer><a href="../index.html">← Volver al índice del banco de pruebas</a></footer>
+</body>
+
+</html>

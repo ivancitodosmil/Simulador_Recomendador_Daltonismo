@@ -47,22 +47,31 @@
          ve en la cabecera, en el desplegable y en el marcador. -->
       <p id="panel-announcer" class="solo-lector" role="status" aria-live="polite"></p>
 
-      <!-- 1. Simulación: siempre abierta, con el botón de evaluar dentro. -->
+      <!-- 1. Simulación: siempre abierta; el botón de evaluar va en la tarjeta siguiente. -->
       <section class="bloque" aria-labelledby="simulation-heading">
         <div class="in">
           <div class="tit">
             <h2 id="simulation-heading">Simulación</h2><span>Esta pestaña</span>
           </div>
-          <div>
-            <label class="et" for="deficiency-select">Tipo de deficiencia</label>
+          <!-- Campo relleno (maqueta de controles): rótulo y valor dentro, flecha
+               en su tramo y el select nativo cubriendo el campo, así teclado y
+               lector de pantalla siguen usando el select. Con appearance:
+               base-select la lista se personaliza (descripciones en data-desc). -->
+          <label class="campo" for="deficiency-select">
+            <span class="txt">
+              <span class="rot">Tipo de deficiencia</span>
+              <span class="val" id="deficiency-value">Ninguna</span>
+            </span>
+            <span class="flecha" aria-hidden="true"></span>
             <select id="deficiency-select"
               aria-label="Tipo de deficiencia a simular en esta pestaña; elegir una la aplica sobre la página y Ninguna la retira">
-              <option value="none">Ninguna</option>
-              <option value="protanopia">Protanopía</option>
-              <option value="deuteranopia">Deuteranopía</option>
-              <option value="tritanopia">Tritanopía</option>
+              <option value="none" data-desc="Colores originales, sin simulación">Ninguna</option>
+              <hr>
+              <option value="protanopia" data-desc="Afecta al cono L (rojo): rojo y verde se confunden">Protanopía</option>
+              <option value="deuteranopia" data-desc="Afecta al cono M (verde): verde y rojo se confunden">Deuteranopía</option>
+              <option value="tritanopia" data-desc="Afecta al cono S (azul): azul y amarillo se confunden">Tritanopía</option>
             </select>
-          </div>
+          </label>
           <div>
             <label class="et" for="severity-slider">Severidad</label>
             <div class="fila-sev">
@@ -73,12 +82,36 @@
           </div>
           <p id="simulation-help" class="ayuda">Se aplica solo a esta pestaña. Elige «Ninguna» para ver
             los colores originales.</p>
-          <button id="evaluate-button" class="btn prim" type="button"
-            aria-label="Extraer la paleta de colores y evaluar la página actual">
-            Extraer paleta y evaluar
+          <!-- Modo por captura: cuando el filtro no puede actuar (WebGL, imágenes). -->
+          <p id="capture-note" class="ayuda" hidden>Simulación por captura: la vista simulada es una imagen
+            de la pantalla y se actualiza al desplazarte.</p>
+          <!-- Mensajes de la simulación (aplicada o retirada, cambio de página);
+               se borran con la siguiente acción del usuario. -->
+          <p id="simulation-status" class="estado" role="status" aria-live="polite" hidden></p>
+        </div>
+      </section>
+
+      <!-- 1b. Evaluación de accesibilidad (maqueta del panel final): qué se
+           analiza, el botón de evaluar y los mensajes de estado. Tras evaluar,
+           el botón pasa a «Volver a evaluar» y la lista se oculta. -->
+      <section class="bloque" aria-labelledby="evaluation-heading">
+        <div class="in">
+          <div class="tit">
+            <h2 id="evaluation-heading">Evaluación de accesibilidad</h2>
+          </div>
+          <p class="desc" id="evaluation-intro">Analiza los gráficos visibles de esta pestaña:</p>
+          <dl class="alcance" id="evaluation-scope">
+            <div><dt>Contraste</dt><dd>WCAG 2.1, criterios 1.4.3 y 1.4.11</dd></div>
+            <div><dt>Distinguibilidad</dt><dd>Series bajo la deficiencia elegida (ΔE00)</dd></div>
+            <div><dt>Recomendación</dt><dd>Paleta accesible equivalente</dd></div>
+          </dl>
+          <button id="evaluate-button" class="btn btn-principal" type="button"
+            aria-label="Evaluar la accesibilidad cromática de la página actual">
+            Evaluar accesibilidad
           </button>
-          <!-- Región en vivo visible: errores, avisos y confirmaciones con
-             información nueva (nunca lo que ya está en otra parte). -->
+          <!-- Mensajes de la evaluación (terminada o descartada, previsualización,
+               reporte, errores): región en vivo visible con información nueva; se
+               borran con la siguiente acción del usuario. -->
           <p id="panel-status" class="estado" role="status" aria-live="polite" hidden></p>
         </div>
       </section>
@@ -131,8 +164,15 @@
       <p id="approximate-notice" class="estado" hidden>
         <strong class="estado-marca estado-marca--aviso">Aviso</strong>
         Evaluación aproximada: parte de la paleta proviene de la captura de pantalla
-        (nivel 3) y perdió la relación color-elemento, así que el contraste solo cubre los
-        colores con elemento identificado.
+        (nivel 3) y perdió la relación color-elemento; sus colores de serie se compararon
+        con el fondo dominante de la captura (contraste aproximado, marcado en Contraste).
+      </p>
+
+      <!-- Aviso de recorte del recorrido: tope de nodos por marco, zonas de gráficos primero. -->
+      <p id="truncated-notice" class="estado" hidden>
+        <strong class="estado-marca estado-marca--aviso">Aviso</strong>
+        La página tiene más elementos de los que se analizan (tope de 5000 por marco): las
+        zonas de gráficos se analizaron primero y parte del resto de la página puede faltar.
       </p>
 
       <!-- 3. Paleta -->
@@ -198,13 +238,18 @@
             <div class="tit">
               <h2 id="recommendation-heading">Recomendación</h2><span>Severidad máxima</span>
             </div>
-            <div>
-              <label class="et" for="family-select">Familia de la paleta</label>
+            <!-- Mismo campo relleno que el tipo de deficiencia, sin descripciones. -->
+            <label class="campo" for="family-select">
+              <span class="txt">
+                <span class="rot">Familia de la paleta</span>
+                <span class="val" id="family-value">Categórica (series independientes)</span>
+              </span>
+              <span class="flecha" aria-hidden="true"></span>
               <select id="family-select" aria-label="Familia de la paleta del dashboard: categórica o secuencial">
                 <option value="qualitative">Categórica (series independientes)</option>
                 <option value="sequential">Secuencial (magnitud ordenada)</option>
               </select>
-            </div>
+            </label>
             <div class="series-res">
               <span id="series-summary"></span>
               <button type="button" id="series-review" class="enlace" aria-expanded="true"
@@ -217,17 +262,28 @@
                 Desmarca los colores que no sean categorías de datos (fondos, ejes, cuadrículas).
                 La matriz de distinguibilidad sigue evaluando todo lo visible.
               </p>
+              <!-- Solo cuando las series vienen de la captura (imagen, lienzo WebGL). -->
+              <p id="series-capture-note" class="ayuda" hidden>
+                En una imagen la extensión no distingue gráficos de iconos: desmarca los colores
+                que no sean series de datos.
+              </p>
               <ul id="series-selection" class="lista-seleccion"></ul>
             </div>
           </div>
 
           <div class="recomendacion-salida">
-            <div class="esquema">
+            <div class="esquema" id="recommendation-scheme">
               <b id="recommendation-title"></b>
               <span id="recommendation-reason"></span>
             </div>
+            <!-- Tarjeta «Cumple sin reemplazo» (diseño de la maqueta de cierre, v5):
+                 se construye con los datos de la evaluación cuando la paleta ya cumple. -->
+            <div id="compliant-card" class="cumple" role="status" hidden></div>
             <!-- Aviso con información nueva (rediseño, incumplimientos fuera del conjunto). -->
             <p id="recommendation-notice" class="estado" hidden></p>
+            <!-- Con «Cumple»: la paleta original (que ya cumple) para copiar y
+                 descargar como tema de Power BI. -->
+            <div id="compliant-export" class="exportar-paleta" hidden></div>
             <!-- Resumen de las tres deficiencias cuando no hay simulación. -->
             <div id="recommendation-overview" hidden></div>
 
@@ -245,10 +301,10 @@
                   <div class="banda" id="band-rec-proposed"></div>
                 </div>
               </div>
-              <div class="map">
-                <div class="cab-t" aria-hidden="true"><span>Original</span><span>Propuesta</span></div>
-                <div id="recommendation-mapping"></div>
-              </div>
+              <!-- Paleta propuesta (maqueta de copiar): título con «Copiar todos»,
+                   tabla de original a propuesta con cada hex propuesto como botón de
+                   copiar, descarga del tema de Power BI y nota. La construye panel.js. -->
+              <div id="proposal-export" class="exportar-paleta"></div>
               <div class="interruptor">
                 <span id="preview-label">Previsualizar en la página</span>
                 <button type="button" id="preview-toggle" class="sw" role="switch" aria-checked="false"
@@ -263,13 +319,14 @@
         </div>
       </section>
 
-      <!-- Pie: exportar como botón secundario y limpiar como enlace de texto. -->
+      <!-- Pie: exportar como botón principal y limpiar como botón de borrado,
+           en proporción 1,5 a 1; sin evaluación, limpiar ocupa todo el ancho. -->
       <div class="pie">
-        <button id="export-button" class="btn secu" type="button" hidden
+        <button id="export-button" class="btn btn-principal" type="button" hidden
           aria-label="Exportar el reporte en PDF: se abre en una pestaña nueva y se guarda con Guardar como PDF">
           Exportar PDF
         </button>
-        <button id="clear-button" class="btn texto" type="button"
+        <button id="clear-button" class="btn btn-borrar" type="button"
           aria-label="Limpiar todo: retirar la simulación y la previsualización y descartar la evaluación de esta pestaña">
           Limpiar todo
         </button>

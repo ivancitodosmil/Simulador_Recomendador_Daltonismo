@@ -66,19 +66,23 @@ for (const file of FILES) {
   if (/iconMarkup|iconElement|comunes\/iconos/.test(text)) fail(file + ": referencia al módulo de iconos retirado");
 
   if (file.endsWith(".css") || file === "src/core/reporte/plantilla.js" || file === "src/ui/reporte/reporte.html") {
-    // 2. Sombras: solo .tema .pulgar.
+    // 2. Sombras: solo .tema .pulgar y, desde la maqueta de controles
+    //    (1.0.0), el anillo de foco del campo relleno (.campo:focus-within,
+    //    .campo:has(select:open)) y la sombra de la lista desplegable
+    //    (.campo select::picker(select)).
+    const SHADOW_RULES = /^\s*(\.tema \.pulgar|\.campo:focus-within|\.campo:has\(select:open\)|\.campo select::picker\(select\)) \{/;
     const shadowLines = lines.map((line, i) => (/box-shadow/.test(line) && !COMMENT.test(line) ? i + 1 : 0)).filter(Boolean);
     const allowedShadow = shadowLines.filter((n) => {
       // La regla a la que pertenece la línea: buscar hacia atrás el selector.
       for (let k = n - 1; k >= Math.max(0, n - 12); k -= 1) {
-        if (/^\s*\.tema \.pulgar \{/.test(lines[k])) return true;
+        if (SHADOW_RULES.test(lines[k])) return true;
         if (/\{\s*$/.test(lines[k]) && k !== n - 1) return false;
       }
       return false;
     });
     const badShadow = shadowLines.filter((n) => !allowedShadow.includes(n));
-    if (badShadow.length) fail(file + ": box-shadow fuera de .tema .pulgar en líneas " + badShadow.join(", "));
-    else ok(file + ": sin sombras" + (allowedShadow.length ? " (salvo la pieza del selector)" : ""));
+    if (badShadow.length) fail(file + ": box-shadow fuera de las reglas admitidas en líneas " + badShadow.join(", "));
+    else ok(file + ": sin sombras" + (allowedShadow.length ? " (salvo la pieza del selector, el anillo del campo y la lista)" : ""));
 
     // 3. Mayúsculas con espaciado.
     if (/text-transform\s*:\s*uppercase/.test(text)) fail(file + ": text-transform: uppercase");
@@ -86,7 +90,10 @@ for (const file of FILES) {
 
     // 4. Barras laterales de color.
     const sideLines = lines.map((line, i) => (/border-left\s*:\s*[1-9]/.test(line) && !COMMENT.test(line) ? i + 1 : 0)).filter(Boolean);
-    const allowedSide = sideLines.filter((n) => /\.ver \+ \.ver|\.metodo div|\.tema button \+ button/.test(lines[n - 1]));
+    // Separadores admitidos: entre veredictos, entre filas del método, entre
+    // botones del tema y la línea que separa la flecha del campo relleno.
+    const allowedSide = sideLines.filter((n) => /\.ver \+ \.ver|\.metodo div|\.tema button \+ button|\.campo \.flecha/.test(lines[n - 1]) ||
+      /\.campo \.flecha \{/.test(lines[n - 2] || "") || /\.campo \.flecha \{/.test(lines[n - 3] || "") || /\.campo \.flecha \{/.test(lines[n - 4] || ""));
     const badSide = sideLines.filter((n) => !allowedSide.includes(n));
     if (badSide.length) fail(file + ": border-left de color en líneas " + badSide.join(", "));
     else ok(file + ": sin barras laterales de color");

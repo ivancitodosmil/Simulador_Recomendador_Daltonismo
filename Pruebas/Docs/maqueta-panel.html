@@ -1,22 +1,26 @@
 <!doctype html>
-<!-- Maqueta de referencia del diseño del panel lateral, vigente desde la versión 0.6.3 con el tema oscuro y el selector de la 0.6.8. Documento de diseño; no se incluye en el paquete de la extensión. -->
+<!-- Guía de referencia del diseño del panel lateral, vigente desde la versión 0.6.3 con el tema oscuro y el selector de la 0.6.8; actualizada en la 1.0.0 con la tarjeta «Evaluación de accesibilidad», el botón «Evaluar accesibilidad», el selector como campo relleno con lista y descripciones, los botones principal/tonal/borrar y la tarjeta «Cumple». Documento de diseño; no se incluye en el paquete de la extensión. -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Maqueta del panel</title>
+<title>Guía del panel</title>
 <style>
 /* Concepto: instrumento de medida. La paleta del propio dashboard es la unica
    nota de color de la interfaz; todo lo demas es neutro y preciso.
-   Colores = tokens 0.6.0 ya auditados (78 comprobaciones), sin anadir ninguno. */
+   Colores = tokens auditados de src/ui/estilos/tokens.css (1.0.0). */
 .panel{
-  --fondo-pagina:#F2F5F9; --superficie:#FFFFFF; --superficie-2:#E8EDF4;
+  --fondo-pagina:#F2F5F9; --superficie:#FFFFFF; --superficie-2:#E8EDF4; --campo:#EEF2F7;
   --borde:#64707F; --borde-suave:#C9D2DE;
   --texto:#16202C; --texto-secundario:#465362;
-  --acento:#155EA2; --acento-texto:#FFFFFF;
+  --acento:#155EA2; --acento-hover:#0F4C86; --acento-texto:#FFFFFF;
+  --acento-suave:#E3EDF8; --acento-suave-hover:#D2E2F3;
   --correcto:#00563F; --correcto-suave:#DCF2E8;
   --aviso:#8A6100; --aviso-suave:#F5EAC9;
   --error:#7F2B00; --error-suave:#FBE3D6;
+  --borrar:#9A2D10; --borrar-suave:#FBE9E3;
+  --exito-fondo:#F3FAF3; --exito-borde:#CFE6D0; --exito-texto:#2D6830;
+  --sombra-lista:0 10px 28px rgba(22,32,44,.16),0 2px 6px rgba(22,32,44,.08);
   --fuente-ui: system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --fuente-mono: ui-monospace,Consolas,"Cascadia Mono","Courier New",monospace;
   --t-xs:12px; --t-s:13px; --t-m:14px; --t-l:16px; --t-xl:22px;
@@ -24,17 +28,22 @@
   color-scheme:light;
 }
 .panel.oscuro{
-  --fondo-pagina:#0F1420; --superficie:#1E2A40; --superficie-2:#27364E; --borde:#8794AA; --borde-suave:#2A3650; --texto:#E6ECF5; --texto-secundario:#A5B1C4; --acento:#8AB4F8; --acento-texto:#0F1420; --correcto:#78CFBE; --correcto-suave:#15322F; --aviso:#E5C46E; --aviso-suave:#322D1C; --error:#F28080; --error-suave:#3B2230;
+  --fondo-pagina:#0F1420; --superficie:#1E2A40; --superficie-2:#27364E; --campo:#26344B; --borde:#8794AA; --borde-suave:#2A3650;
+  --texto:#E6ECF5; --texto-secundario:#A5B1C4; --acento:#8AB4F8; --acento-hover:#A8C7FA; --acento-texto:#0F1420;
+  --acento-suave:#22385A; --acento-suave-hover:#2A4570; --correcto:#78CFBE; --correcto-suave:#15322F; --aviso:#E5C46E; --aviso-suave:#322D1C;
+  --error:#F28080; --error-suave:#3B2230; --borrar:#F4A48A; --borrar-suave:#3A2526;
+  --exito-fondo:#1A3029; --exito-borde:#2C4A3F; --exito-texto:#9AD6A4;
+  --sombra-lista:0 10px 28px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3);
   color-scheme:dark;
 }
 
-/* ---------- pagina de la maqueta ---------- */
+/* ---------- pagina de la guia ---------- */
 html,body{margin:0;background:#DDE3EA;font-family:system-ui,"Segoe UI",Roboto,Arial,sans-serif;color:#16202C}
 .lienzo{padding:24px 16px 48px;display:flex;flex-wrap:wrap;gap:32px;justify-content:center;align-items:flex-start}
 .marco{display:flex;flex-direction:column;gap:8px;max-width:100%}
 .marco figcaption{font-size:13px;color:#465362}
 h1.maq{font-size:17px;font-weight:600;text-align:center;margin:24px 16px 0}
-p.maq{font-size:13px;color:#465362;text-align:center;margin:6px 16px 0}
+p.maq{font-size:13px;color:#465362;text-align:center;margin:6px 16px 0;max-width:900px;margin-left:auto;margin-right:auto}
 
 /* ---------- panel ---------- */
 .panel{width:380px;max-width:100%;background:var(--fondo-pagina);color:var(--texto);
@@ -89,17 +98,65 @@ details.bloque[open] > summary{border-bottom:1px solid var(--borde-suave)}
 details.bloque > .in{padding:12px 14px 14px}
 
 label.et{font-size:var(--t-s);color:var(--texto-secundario);display:block;margin-bottom:4px}
-select{width:100%;font:inherit;font-size:var(--t-m);color:var(--texto);background:var(--superficie);
-  border:1px solid var(--borde);border-radius:var(--r-s);padding:7px 10px;min-height:34px}
 .fila-sev{display:flex;align-items:center;gap:10px}
 .fila-sev input{flex:1;accent-color:var(--acento);min-height:24px}
 .ayuda{font-size:var(--t-s);color:var(--texto-secundario);margin:0}
+.estado{margin:0;font-size:var(--t-s)}
+.estado b{font-weight:600}
 
-.btn{font:inherit;font-size:var(--t-m);font-weight:600;border-radius:var(--r-s);min-height:36px;padding:8px 14px;cursor:pointer;width:100%}
-.btn.prim{background:var(--acento);color:var(--acento-texto);border:1px solid var(--acento)}
-.btn.secu{background:var(--superficie);color:var(--acento);border:1px solid var(--borde)}
-.btn.texto{background:transparent;border:0;color:var(--texto-secundario);font-weight:500;width:auto;padding:8px 4px;text-decoration:underline;text-underline-offset:3px}
-.btn:focus-visible,select:focus-visible,summary:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+/* ---------- campo relleno (1.0.0): rotulo y valor dentro, flecha en su tramo,
+   select nativo transparente encima; lista personalizable de Chrome ---------- */
+.campo{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 48px;align-items:stretch;
+  background:var(--campo);border:1px solid var(--borde);border-radius:10px;min-height:58px;cursor:pointer}
+.campo:hover{border-color:var(--texto)}
+.campo:focus-within,.campo.abierto{border-color:var(--acento);background:var(--superficie);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--acento) 22%,transparent)}
+.campo .txt{display:grid;align-content:center;padding:8px 14px;gap:1px;min-width:0;pointer-events:none}
+.campo .rot{font-size:12px;color:var(--texto-secundario)}
+.campo .val{font-size:16px;font-weight:600}
+.campo select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px}
+.campo .flecha{display:grid;place-items:center;border-left:1px solid var(--borde);pointer-events:none}
+.campo .flecha::before{content:"";width:9px;height:9px;margin-top:-5px;
+  border-right:2px solid var(--texto);border-bottom:2px solid var(--texto);transform:rotate(45deg)}
+.campo.abierto .flecha::before{margin-top:5px;transform:rotate(225deg)}
+/* lista abierta (como ::picker(select) en Chrome 135+) */
+.con-lista{position:relative}
+.lista{position:absolute;left:0;right:0;top:100%;z-index:3;margin-top:8px;background:var(--superficie);border:1px solid var(--borde-suave);
+  border-radius:10px;box-shadow:var(--sombra-lista);padding:6px;display:grid;gap:2px}
+.op{padding:9px 12px;border-radius:7px;cursor:pointer}
+.op b{display:block;font-size:15px;font-weight:600}
+.op small{display:block;font-size:12.5px;color:var(--texto-secundario)}
+.op.hover{background:var(--superficie-2)}
+.op[aria-selected="true"]{background:var(--acento-suave)}
+.op[aria-selected="true"] b{color:var(--acento)}
+.sep{height:1px;background:var(--borde-suave);margin:4px 8px}
+
+/* ---------- tarjeta «Evaluacion de accesibilidad» (1.0.0) ---------- */
+.desc{margin:-6px 0 0;font-size:var(--t-s);color:var(--texto-secundario)}
+.alcance{margin:0;display:grid;border-top:1px solid var(--borde-suave)}
+.alcance div{display:grid;grid-template-columns:minmax(118px,max-content) minmax(0,1fr);gap:10px;padding:7px 0;border-bottom:1px solid var(--borde-suave);font-size:13.5px}
+.alcance dt{font-weight:600;white-space:nowrap}
+.alcance dd{margin:0;color:var(--texto-secundario)}
+.panel.evaluado .desc,.panel.evaluado .alcance{display:none}
+
+/* ---------- botones (1.0.0): 48 px, radio 10, 15 px semibold ---------- */
+.btn{display:flex;align-items:center;justify-content:center;width:100%;height:48px;padding:0 12px;font:inherit;font-size:15px;font-weight:600;
+  letter-spacing:.01em;border-radius:10px;border:1.5px solid transparent;cursor:pointer}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible,select:focus-visible,summary:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--acento);outline-offset:3px}
+.btn-principal{background:var(--acento);color:var(--acento-texto)}
+.btn-principal:hover{background:var(--acento-hover)}
+.btn-tonal{background:var(--acento-suave);color:var(--acento)}
+.btn-tonal:hover{background:var(--acento-suave-hover)}
+.btn-borrar{background:transparent;color:var(--borrar);border-color:color-mix(in srgb,var(--borrar) 45%,transparent)}
+.btn-borrar:hover{background:var(--borrar-suave);border-color:var(--borrar)}
+.panel.evaluado .btn-evaluar{background:var(--acento-suave);color:var(--acento)}
+.pie{display:grid;grid-template-columns:1.5fr 1fr;gap:10px}
+.panel.inicial .pie{grid-template-columns:1fr}
+.panel.inicial .resultado,.panel.inicial .pie .btn-principal{display:none}
+.vacio{margin:0;padding:8px 0;font-size:var(--t-s);color:var(--texto-secundario);text-align:center}
+.panel:not(.inicial) .vacio{display:none}
+@media (prefers-reduced-motion:reduce){.btn:active{transform:none}}
 
 /* franja de la paleta: la nota de color del panel */
 .franja{display:flex;flex-direction:column;gap:6px}
@@ -144,7 +201,7 @@ select{width:100%;font:inherit;font-size:var(--t-m);color:var(--texto);backgroun
 .grupo-c h3 span{font-weight:400;color:var(--texto-secundario)}
 .rc{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--borde-suave)}
 .rc:last-child{border-bottom:0}
-.muestra-txt{height:28px;box-shadow:0 0 0 1px var(--borde-suave);border-radius:var(--r-s);border:1px solid var(--borde-suave);display:grid;place-items:center;font-weight:650;font-size:14px}
+.muestra-txt{height:28px;border-radius:var(--r-s);border:1px solid var(--borde-suave);display:grid;place-items:center;font-weight:650;font-size:14px}
 .muestra-obj{height:28px;border-radius:var(--r-s);border:1px solid var(--borde-suave);display:flex;align-items:center;justify-content:center}
 .muestra-obj i{width:22px;height:12px;border-radius:2px}
 .rc .num{font-size:var(--t-m);font-weight:600}
@@ -180,6 +237,7 @@ table.matriz td.x{background:var(--error-suave);color:var(--error);font-weight:7
 .escala .tip{position:absolute;top:4px;width:10px;height:10px;border-radius:50%;border:2px solid var(--texto);background:var(--superficie);margin-left:-5px}
 .cifras{display:flex;justify-content:space-between;font-size:var(--t-xs);color:var(--texto-secundario)}
 .cifras b{color:var(--texto);font-weight:600}
+.sin-datos{margin:0;font-size:var(--t-s);color:var(--texto-secundario)}
 
 /* recomendacion */
 .esquema{display:flex;flex-direction:column;gap:2px}
@@ -187,7 +245,6 @@ table.matriz td.x{background:var(--error-suave);color:var(--error);font-weight:7
 .esquema span{font-size:var(--t-s);color:var(--texto-secundario)}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:var(--t-s);color:var(--texto-secundario)}
 .kpis b{display:block;color:var(--texto);font-size:var(--t-l);font-variant-numeric:tabular-nums}
-.bandas-rec{display:flex;flex-direction:column;gap:6px}
 .map{display:flex;flex-direction:column}
 .map .cab-t,.map .r{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center}
 .map .cab-t{font-size:var(--t-xs);color:var(--texto-secundario);padding-bottom:6px;border-bottom:1px solid var(--borde-suave)}
@@ -201,76 +258,104 @@ table.matriz td.x{background:var(--error-suave);color:var(--error);font-weight:7
 .sw{position:relative;width:38px;height:22px;border-radius:999px;background:var(--acento);border:1px solid var(--acento);flex:none}
 .sw::after{content:"";position:absolute;top:2px;left:18px;width:16px;height:16px;border-radius:50%;background:var(--acento-texto)}
 
-.pie{display:flex;gap:8px;align-items:center}
-.pie .btn.secu{flex:1}
+/* ---------- tarjeta «Cumple» (1.0.0): tokens de exito, bandas, tres cifras y regla 0-50 ---------- */
+.cumple{background:var(--exito-fondo);border:1px solid var(--exito-borde);border-radius:var(--r-m);padding:16px;margin-top:4px}
+.cumple .cabecera{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.cumple .sello{background:var(--exito-texto);color:var(--exito-fondo);font-weight:700;font-size:12px;padding:3px 10px;border-radius:999px;letter-spacing:.02em}
+.cumple .contexto{font-size:12px;color:var(--texto-secundario)}
+.cumple h3{margin:2px 0 4px;font-size:20px;line-height:1.25;font-weight:700}
+.cumple .lead{margin:0 0 14px;color:var(--texto-secundario);font-size:13px}
+.cumple .bandas{display:grid;grid-template-columns:92px minmax(0,1fr);gap:6px 10px;align-items:center;margin-bottom:14px}
+.cumple .bandas>span{font-size:12px;color:var(--texto-secundario)}
+.cumple .cifras-cumple{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.cumple .cifra{background:var(--superficie);border:1px solid var(--exito-borde);border-radius:var(--r-s);padding:8px 10px;min-width:0}
+.cumple .cifra .v{display:block;font-size:22px;font-weight:700;color:var(--exito-texto);line-height:1.15}
+.cumple .cifra .e{display:block;font-size:12px;color:var(--texto-secundario)}
+.cumple .margen .tit{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--texto-secundario);margin-bottom:6px}
+.cumple .margen .tit b{color:var(--exito-texto)}
+.cumple .regla{position:relative;height:10px;background:var(--exito-borde);border-radius:999px}
+.cumple .regla .zona{position:absolute;left:0;top:0;bottom:0;background:var(--aviso-suave);border-radius:999px 0 0 999px;border-right:2px solid var(--aviso)}
+.cumple .regla .punto{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--exito-texto);border:2px solid var(--exito-fondo)}
+.cumple .eje{position:relative;height:14px;font-size:12px;color:var(--texto-secundario);margin-top:4px}
+.cumple .eje span{position:absolute;transform:translateX(-50%)}
+.cumple .eje span:first-child{transform:none}
+.cumple .eje span:last-child{transform:translateX(-100%)}
 
 @media (prefers-reduced-motion:no-preference){ details.bloque > summary::after{transition:transform .15s} }
 </style>
 </head>
 <body>
-<h1 class="maq">Maqueta del panel del Evaluador cromático</h1>
-<p class="maq">Datos reales del panel-svg evaluado en protanopía. Colores idénticos a los tokens auditados de la versión 0.6.0. El selector Claro / Oscuro de cada cabecera funciona.</p>
+<h1 class="maq">Guía del panel del Evaluador cromático</h1>
+<p class="maq">Cuatro estados del panel a 380 px: evaluado en claro y en Azul noche con los datos reales del panel-svg bajo protanopía (propuesta Tol), el panel-cumple bajo protanopía con la tarjeta «Cumple», y el estado inicial con la lista del selector abierta. Colores idénticos a los tokens auditados de la versión 1.0.0. El selector Claro / Oscuro de cada cabecera funciona.</p>
 <div class="lienzo" id="lienzo"></div>
 
 <template id="tpl">
 <div class="panel">
   <header class="cab">
     <div class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-    <div class="txt"><b>Evaluador cromático</b><small>Evaluada a las 10:16 · 2 ms</small></div>
+    <div class="txt"><b>Evaluador cromático</b><small data-cabecera>Evaluada a las 10:16 · 2 ms</small></div>
     <div class="tema" role="radiogroup" aria-label="Tema del panel" data-valor="claro"><span class="pulgar" aria-hidden="true"></span><button role="radio" data-t="claro" title="Tema claro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span class="palabra">Claro</span></button><button role="radio" data-t="oscuro" title="Tema oscuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span class="palabra">Oscuro</span></button></div>
   </header>
 
   <div class="cuerpo">
-    <!-- 1. Simulacion: siempre abierta -->
+    <!-- 1. Simulacion: siempre abierta; sin boton desde la 1.0.0 -->
     <section class="bloque"><div class="in">
       <div class="tit"><h2>Simulación</h2><span>Esta pestaña</span></div>
-      <div>
-        <label class="et" for="tipo">Tipo de deficiencia</label>
-        <select id="tipo"><option>Ninguna</option><option selected>Protanopía</option><option>Deuteranopía</option><option>Tritanopía</option></select>
+      <div class="con-lista">
+        <label class="campo" for="tipo"><span class="txt"><span class="rot">Tipo de deficiencia</span><span class="val" data-valor-tipo>Protanopía</span></span><span class="flecha" aria-hidden="true"></span>
+          <select id="tipo" aria-label="Tipo de deficiencia"><option>Ninguna</option><hr><option selected>Protanopía</option><option>Deuteranopía</option><option>Tritanopía</option></select></label>
+        <div data-lista></div>
       </div>
       <div>
         <label class="et" for="sev">Severidad</label>
         <div class="fila-sev"><input id="sev" type="range" min="0" max="1" step="0.1" value="1"><span class="mono">1,0</span></div>
       </div>
       <p class="ayuda">Se aplica solo a esta pestaña. Elige «Ninguna» para ver los colores originales.</p>
-      <button class="btn secu">Volver a evaluar</button>
+      <!-- mensajes de la simulacion (aplicada o retirada, cambio de pagina), vacios aqui -->
     </div></section>
 
+    <!-- 1b. Evaluacion de accesibilidad (1.0.0): que se analiza, boton y mensajes de la evaluacion -->
+    <section class="bloque"><div class="in">
+      <div class="tit"><h2>Evaluación de accesibilidad</h2></div>
+      <p class="desc">Analiza los gráficos visibles de esta pestaña:</p>
+      <dl class="alcance">
+        <div><dt>Contraste</dt><dd>WCAG 2.1, criterios 1.4.3 y 1.4.11</dd></div>
+        <div><dt>Distinguibilidad</dt><dd>Series bajo la deficiencia elegida (ΔE00)</dd></div>
+        <div><dt>Recomendación</dt><dd>Paleta accesible equivalente</dd></div>
+      </dl>
+      <button class="btn btn-principal btn-evaluar" type="button" data-boton-evaluar>Evaluar accesibilidad</button>
+      <p class="estado" data-estado hidden></p>
+    </div></section>
+
+    <p class="vacio">Al evaluar aparecerán aquí el resumen con la paleta, el contraste, la distinguibilidad y la recomendación.</p>
+
     <!-- 2. Resumen con la franja de la paleta -->
-    <section class="bloque">
+    <section class="bloque resultado">
       <div class="in" style="padding-bottom:14px">
-        <div class="tit"><h2>Resumen</h2><span>11 series</span></div>
+        <div class="tit"><h2>Resumen</h2><span data-series></span></div>
         <div class="franja" aria-label="Series del dashboard en visión típica y bajo protanopía">
           <div class="fila"><span>Visión típica</span><div class="banda" data-banda="orig"></div></div>
           <div class="fila"><span>Protanopía</span><div class="banda" data-banda="sim"></div></div>
         </div>
       </div>
-      <div class="marcador">
-        <div class="dato"><span class="d">Contraste WCAG</span><span class="v mal">7<small>de 16</small></span><span class="e">pares incumplen</span></div>
-        <div class="dato"><span class="d">Distinguibilidad</span><span class="v mal">4<small>de 55</small></span><span class="e">pares confundibles</span></div>
-        <div class="dato"><span class="d">Extracción</span><span class="v">1</span><span class="e">nivel, DOM y SVG</span></div>
-        <div class="dato"><span class="d">Evaluación</span><span class="v">15</span><span class="e">colores, exacta</span></div>
-      </div>
+      <div class="marcador" data-marcador></div>
     </section>
 
     <!-- 3. Paleta -->
-    <details class="bloque" open>
-      <summary><h2>Paleta detectada</h2><span>15 colores</span></summary>
+    <details class="bloque resultado" open>
+      <summary><h2>Paleta detectada</h2><span data-colores></span></summary>
       <div class="in"><div class="tabla-pal" data-paleta>
         <div class="cab-t"><span></span><span>Original</span><span>Protanopía</span></div>
       </div></div>
     </details>
 
     <!-- 4. Contraste -->
-    <details class="bloque" open>
-      <summary><h2>Contraste</h2><span>7 incumplen</span></summary>
+    <details class="bloque resultado" open>
+      <summary><h2>Contraste</h2><span data-contraste></span></summary>
       <div class="in">
         <div class="grupo-c">
           <h3>1.4.3 Texto <span>· umbral 4,5:1</span></h3>
-          <div class="rc"><div class="muestra-txt" style="color:#5A6572;background:#FFFFFF">Aa</div>
-            <div><span class="mono num">5,93<small>:1</small></span><span class="qd"><code>#5A6572</code> sobre <code>#FFFFFF</code> · 46 elementos</span></div><span class="p ok">Cumple</span></div>
-          <div class="rc"><div class="muestra-txt" style="color:#0B57D0;background:#FFFFFF">Aa</div>
-            <div><span class="mono num">6,39<small>:1</small></span><span class="qd"><code>#0B57D0</code> sobre <code>#FFFFFF</code> · 1 enlace</span></div><span class="p ok">Cumple</span></div>
+          <div data-texto></div>
         </div>
         <div class="grupo-c">
           <h3>1.4.11 Objetos gráficos <span>· umbral 3:1</span></h3>
@@ -280,8 +365,8 @@ table.matriz td.x{background:var(--error-suave);color:var(--error);font-weight:7
     </details>
 
     <!-- 5. Distinguibilidad -->
-    <details class="bloque" open>
-      <summary><h2>Distinguibilidad</h2><span>4 pares bajo 10</span></summary>
+    <details class="bloque resultado" open>
+      <summary><h2>Distinguibilidad</h2><span data-dist></span></summary>
       <div class="in">
         <div class="env-matriz"><table class="matriz" data-matriz></table></div>
         <p class="leyenda-m">ΔE00 entre series simuladas. En <b>negrita sobre fondo rojizo</b>, los pares por debajo del umbral 10.</p>
@@ -290,84 +375,145 @@ table.matriz td.x{background:var(--error-suave);color:var(--error);font-weight:7
     </details>
 
     <!-- 6. Recomendacion -->
-    <section class="bloque"><div class="in">
+    <section class="bloque resultado"><div class="in">
       <div class="tit"><h2>Recomendación</h2><span>Severidad máxima</span></div>
-      <div>
-        <label class="et" for="fam">Familia de la paleta</label>
-        <select id="fam"><option selected>Categórica (series independientes)</option><option>Secuencial (magnitud ordenada)</option></select>
-      </div>
-      <div class="series-res"><span>8 de 11 series consideradas</span><a href="#" onclick="return false">Revisar</a></div>
-      <div class="esquema"><b>Tol cualitativo de 12</b><span>Primer esquema acreditado para protanopía con capacidad suficiente que superó la revalidación.</span></div>
-      <div class="kpis"><div><b>3</b>esquemas probados</div><div><b>3</b>sustituciones</div><div><b class="mono">13,33</b>ΔE00 mínimo</div></div>
-      <div class="franja">
-        <div class="fila"><span>Original</span><div class="banda" data-banda="rec-o"></div></div>
-        <div class="fila"><span>Propuesta</span><div class="banda" data-banda="rec-p"></div></div>
-      </div>
-      <div class="map" data-map><div class="cab-t"><span>Original</span><span>Propuesta</span></div></div>
-      <div class="interruptor"><span>Previsualizar en la página</span><span class="sw" role="switch" aria-checked="true" tabindex="0"></span></div>
+      <label class="campo" for="fam"><span class="txt"><span class="rot">Familia de la paleta</span><span class="val">Categórica (series independientes)</span></span><span class="flecha" aria-hidden="true"></span>
+        <select id="fam" aria-label="Familia de la paleta"><option selected>Categórica (series independientes)</option><option>Secuencial (magnitud ordenada)</option></select></label>
+      <div class="series-res"><span data-consideradas></span><a href="#" onclick="return false">Ocultar</a></div>
+      <div data-recomendacion></div>
     </div></section>
 
-    <div class="pie"><button class="btn secu">Exportar reporte</button><button class="btn texto">Limpiar todo</button></div>
+    <div class="pie"><button class="btn btn-principal" type="button">Exportar PDF</button><button class="btn btn-borrar" type="button">Limpiar todo</button></div>
   </div>
 </div>
 </template>
 
 <script>
-const orig=["#4E79A7","#FFFFFF","#000000","#F28E2B","#E15759","#EDC948","#C9CFD6","#76B7B2","#59A14F","#A8CFCB","#2C7873"];
-const sim =["#667BA9","#FFFFFF","#000000","#AC9918","#7A7358","#DEC636","#CDCFD6","#B0B1B2","#A59548","#CBCBCB","#717273"];
-const paleta=[["#5A6572","#606573","texto · 36,8 %"],["#4E79A7","#667BA9","serie · 11,2 %"],["#FFFFFF","#FFFFFF","fondo · 8,8 %"],
- ["#000000","#000000","serie · 6,4 %"],["#F28E2B","#AC9918","serie · 6,4 %"],["#E15759","#7A7358","serie · 6,4 %"],["#EDC948","#DEC636","serie · 6,4 %"],
- ["#C9CFD6","#CDCFD6","eje · 4,8 %"],["#21262B","#24262B","texto · 4,0 %"],["#E3E6EA","#E5E6EA","borde · 3,2 %"],["#76B7B2","#B0B1B2","serie · 1,6 %"],
- ["#59A14F","#A59548","serie · 1,6 %"],["#A8CFCB","#CBCBCB","serie · 0,8 %"],["#2C7873","#717273","serie · 0,8 %"],["#0B57D0","#0068D4","texto · 0,8 %"]];
-const graf=[["#FFFFFF","1,00","6 separadores",0],["#E3E6EA","1,25","4 bordes de tarjeta",0],["#C9CFD6","1,57","6 ejes",0],["#EDC948","1,61","6 series",0],
- ["#A8CFCB","1,69","1 área",0],["#76B7B2","2,29","1 serie",0],["#F28E2B","2,42","6 series",0],["#59A14F","3,16","1 serie",1],["#E15759","3,68","6 series",1],["#4E79A7","4,55","12 series",1]];
-const M=[[],[38.9],[41.7,100],[48.4,36.2,56.1],[31.3,39.8,37.0,21.7],[53.7,30.1,75.1,12.8,32.0],[28.7,11.0,74.9,34.0,32.5,31.8],
- [24.0,18.1,60.2,27.9,24.3,28.7,8.4],[43.4,34.1,52.8,6.2,16.9,16.0,30.8,24.1],[29.6,11.4,72.7,29.6,29.8,27.3,3.7,6.8,26.5],[16.7,38.4,34.7,30.5,12.7,38.7,28.9,21.2,26.1,27.8]];
-const pares=[["#C9CFD6","#A8CFCB",3.65,13.44,"solo bajo simulación"],["#F28E2B","#59A14F",6.16,44.59,"solo bajo simulación"],
- ["#76B7B2","#A8CFCB",6.85,9.17,"también en visión típica"],["#C9CFD6","#76B7B2",8.36,20.13,"solo bajo simulación"]];
-const recO=["#4E79A7","#F28E2B","#E15759","#EDC948","#76B7B2","#59A14F","#A8CFCB","#2C7873"];
-const recP=["#6699CC","#AA4466","#CC6677","#661100","#332288","#999933","#AA4499","#117733"];
+/* ---- datos reales del panel-svg bajo protanopia (propuesta Tol) ---- */
+const svg = {
+  cabecera:"Evaluada a las 10:16 · 2 ms", series:"11 series", colores:"15 colores", contraste:"7 incumplen", dist:"4 pares bajo 10", consideradas:"8 de 11 series consideradas",
+  marcador:[["Contraste WCAG","7","de 16","pares incumplen",1],["Distinguibilidad","4","de 55","pares confundibles",1],["Extracción","1","","nivel, DOM y SVG",0],["Evaluación","15","","colores, exacta",0]],
+  orig:["#4E79A7","#FFFFFF","#000000","#F28E2B","#E15759","#EDC948","#C9CFD6","#76B7B2","#59A14F","#A8CFCB","#2C7873"],
+  sim:["#667BA9","#FFFFFF","#000000","#AC9918","#7A7358","#DEC636","#CDCFD6","#B0B1B2","#A59548","#CBCBCB","#717273"],
+  paleta:[["#5A6572","#606573","texto · 36,8 %"],["#4E79A7","#667BA9","serie · 11,2 %"],["#FFFFFF","#FFFFFF","fondo · 8,8 %"],
+    ["#000000","#000000","serie · 6,4 %"],["#F28E2B","#AC9918","serie · 6,4 %"],["#E15759","#7A7358","serie · 6,4 %"],["#EDC948","#DEC636","serie · 6,4 %"],
+    ["#C9CFD6","#CDCFD6","eje · 4,8 %"],["#21262B","#24262B","texto · 4,0 %"],["#E3E6EA","#E5E6EA","borde · 3,2 %"],["#76B7B2","#B0B1B2","serie · 1,6 %"],
+    ["#59A14F","#A59548","serie · 1,6 %"],["#A8CFCB","#CBCBCB","serie · 0,8 %"],["#2C7873","#717273","serie · 0,8 %"],["#0B57D0","#0068D4","texto · 0,8 %"]],
+  texto:[["#5A6572","5,93","46 elementos",1],["#0B57D0","6,39","1 enlace",1]],
+  graf:[["#FFFFFF","1,00","6 separadores",0],["#E3E6EA","1,25","4 bordes de tarjeta",0],["#C9CFD6","1,57","6 ejes",0],["#EDC948","1,61","6 series",0],
+    ["#A8CFCB","1,69","1 área",0],["#76B7B2","2,29","1 serie",0],["#F28E2B","2,42","6 series",0],["#59A14F","3,16","1 serie",1],["#E15759","3,68","6 series",1],["#4E79A7","4,55","12 series",1]],
+  M:[[],[38.9],[41.7,100],[48.4,36.2,56.1],[31.3,39.8,37.0,21.7],[53.7,30.1,75.1,12.8,32.0],[28.7,11.0,74.9,34.0,32.5,31.8],
+    [24.0,18.1,60.2,27.9,24.3,28.7,8.4],[43.4,34.1,52.8,6.2,16.9,16.0,30.8,24.1],[29.6,11.4,72.7,29.6,29.8,27.3,3.7,6.8,26.5],[16.7,38.4,34.7,30.5,12.7,38.7,28.9,21.2,26.1,27.8]],
+  pares:[["#C9CFD6","#A8CFCB",3.65,13.44,"solo bajo simulación"],["#F28E2B","#59A14F",6.16,44.59,"solo bajo simulación"],
+    ["#76B7B2","#A8CFCB",6.85,9.17,"también en visión típica"],["#C9CFD6","#76B7B2",8.36,20.13,"solo bajo simulación"]],
+  recomendacion:"propuesta",
+  recO:["#4E79A7","#F28E2B","#E15759","#EDC948","#76B7B2","#59A14F","#A8CFCB","#2C7873"],
+  recP:["#6699CC","#AA4466","#CC6677","#661100","#332288","#999933","#AA4499","#117733"]
+};
+/* ---- datos reales del panel-cumple bajo protanopia (tarjeta «Cumple») ---- */
+const cumple = {
+  cabecera:"Evaluada a las 10:21 · 4 ms", series:"4 series", colores:"8 colores", contraste:"todo cumple", dist:"sin pares bajo 10", consideradas:"4 de 4 series consideradas",
+  marcador:[["Contraste WCAG","0","de 7","pares incumplen",0],["Distinguibilidad","0","de 6","pares confundibles",0],["Extracción","1","","nivel, DOM y SVG",0],["Evaluación","8","","colores, exacta",0]],
+  orig:["#0072B2","#D55E00","#009E73","#CC79A7"],
+  sim:["#5375B5","#817100","#9A9271","#808BA9"],
+  paleta:[["#FFFFFF","#FFFFFF","fondo · 24,0 %"],["#1F2933","#252933","texto · 20,0 %"],["#767676","#767676","eje · 16,0 %"],["#4B5563","#505564","texto · 12,0 %"],
+    ["#0072B2","#5375B5","serie · 7,0 %"],["#D55E00","#817100","serie · 7,0 %"],["#009E73","#9A9271","serie · 7,0 %"],["#CC79A7","#808BA9","serie · 7,0 %"]],
+  texto:[["#4B5563","7,56","12 elementos",1],["#1F2933","14,76","38 elementos",1]],
+  graf:[["#CC79A7","3,06","3 series",1],["#009E73","3,42","3 series",1],["#D55E00","3,87","3 series",1],["#767676","4,54","9 ejes",1],["#0072B2","5,19","3 series",1]],
+  M:[[],[50.0],[38.4,18.2],[12.3,41.1,28.0]],
+  pares:[],
+  recomendacion:"cumple"
+};
 const f=n=>n.toFixed(1).replace(".",",");
 const f2=n=>n.toFixed(2).replace(".",",");
+const lista=`<div class="lista" role="listbox" aria-label="Tipo de deficiencia">
+  <div class="op" role="option" aria-selected="true"><b>Ninguna</b><small>Colores originales, sin simulación</small></div>
+  <div class="sep"></div>
+  <div class="op" role="option" aria-selected="false"><b>Protanopía</b><small>Afecta al cono L (rojo): rojo y verde se confunden</small></div>
+  <div class="op hover" role="option" aria-selected="false"><b>Deuteranopía</b><small>Afecta al cono M (verde): verde y rojo se confunden</small></div>
+  <div class="op" role="option" aria-selected="false"><b>Tritanopía</b><small>Afecta al cono S (azul): azul y amarillo se confunden</small></div>
+</div>`;
 
-function montar(p){
-  const b=(sel,arr)=>{p.querySelector(`[data-banda="${sel}"]`).innerHTML=arr.map(c=>`<i style="background:${c}"></i>`).join("")};
-  b("orig",orig);b("sim",sim);b("rec-o",recO);b("rec-p",recP);
-  p.querySelector("[data-paleta]").insertAdjacentHTML("beforeend",paleta.map(([o,s,r])=>
+function montar(p,d){
+  const b=(sel,arr)=>{const el=p.querySelector(`[data-banda="${sel}"]`);if(el)el.innerHTML=arr.map(c=>`<i style="background:${c}"></i>`).join("")};
+  b("orig",d.orig);b("sim",d.sim);
+  p.querySelector("[data-cabecera]").textContent=d.cabecera;
+  p.querySelector("[data-series]").textContent=d.series;p.querySelector("[data-colores]").textContent=d.colores;
+  p.querySelector("[data-contraste]").textContent=d.contraste;p.querySelector("[data-dist]").textContent=d.dist;
+  p.querySelector("[data-consideradas]").textContent=d.consideradas;
+  p.querySelector("[data-marcador]").innerHTML=d.marcador.map(([t,v,de,e,mal])=>
+    `<div class="dato"><span class="d">${t}</span><span class="v${mal?" mal":""}">${v}${de?`<small>${de}</small>`:""}</span><span class="e">${e}</span></div>`).join("");
+  p.querySelector("[data-paleta]").insertAdjacentHTML("beforeend",d.paleta.map(([o,s,r])=>
     `<div class="r"><span class="par"><i style="background:${o}"></i><i style="background:${s}"></i></span>
      <span><span class="mono hex">${o}</span><span class="rol">${r}</span></span><span class="mono hex">${s}</span></div>`).join(""));
-  p.querySelector("[data-graficos]").innerHTML=graf.map(([c,r,q,ok])=>
+  p.querySelector("[data-texto]").innerHTML=d.texto.map(([c,r,q,ok])=>
+    `<div class="rc"><div class="muestra-txt" style="color:${c};background:#FFFFFF">Aa</div>
+     <div><span class="mono num">${r}<small>:1</small></span><span class="qd"><code>${c}</code> sobre <code>#FFFFFF</code> · ${q}</span></div><span class="p ${ok?"ok":"ko"}">${ok?"Cumple":"Incumple"}</span></div>`).join("");
+  p.querySelector("[data-graficos]").innerHTML=d.graf.map(([c,r,q,ok])=>
     `<div class="rc"><div class="muestra-obj" style="background:#FFFFFF"><i style="background:${c};outline:${c=="#FFFFFF"?"1px dashed #9aa4b1":"none"}"></i></div>
      <div><span class="mono num">${r}<small>:1</small></span><span class="qd"><code>${c}</code> sobre <code>#FFFFFF</code> · ${q}</span></div>
      <span class="p ${ok?"ok":"ko"}">${ok?"Cumple":"Incumple"}</span></div>`).join("");
-  let t=`<thead><tr><th></th>${orig.slice(0,10).map((c,i)=>`<th><span class="m" style="background:${c}" title="${c}"></span></th>`).join("")}</tr></thead><tbody>`;
-  for(let i=1;i<11;i++){
-    t+=`<tr><th class="fila"><span class="m" style="background:${orig[i]}"></span> ${i+1}</th>`;
-    for(let j=0;j<10;j++){
-      if(j<i){const v=M[i][j],x=v<10;t+=`<td class="${x?"x":"v"}">${f(v)}${x?'<span class="solo-lector"> confundible</span>':""}</td>`}
+  const n=d.orig.length;
+  let t=`<thead><tr><th></th>${d.orig.slice(0,n-1).map((c)=>`<th><span class="m" style="background:${c}" title="${c}"></span></th>`).join("")}</tr></thead><tbody>`;
+  for(let i=1;i<n;i++){
+    t+=`<tr><th class="fila"><span class="m" style="background:${d.orig[i]}"></span> ${i+1}</th>`;
+    for(let j=0;j<n-1;j++){
+      if(j<i){const v=d.M[i][j],x=v<10;t+=`<td class="${x?"x":"v"}">${f(v)}${x?'<span class="solo-lector"> confundible</span>':""}</td>`}
       else t+=`<td style="background:transparent"></td>`;
     }
     t+="</tr>";
   }
   p.querySelector("[data-matriz]").innerHTML=t+"</tbody>";
   const pos=v=>Math.min(v,50)/50*100;
-  p.querySelector("[data-pares]").innerHTML=pares.map(([a,b2,s,tp,nota])=>
+  p.querySelector("[data-pares]").innerHTML=d.pares.length?d.pares.map(([a,b2,s,tp,nota])=>
     `<div class="parc"><div class="top"><span class="m" style="background:${a}"></span><span class="mono hx">${a}</span>
       <span class="m" style="background:${b2}"></span><span class="mono hx">${b2}</span><span class="p ko">Confundible</span></div>
      <div class="escala" aria-hidden="true"><div class="pista"></div><div class="zona" style="width:20%"></div><div class="umbral" style="left:20%"></div>
       <div class="tip" style="left:${pos(tp)}%"></div><div class="sim" style="left:${pos(s)}%"></div></div>
      <div class="cifras"><span>Simulado <b class="mono">${f2(s)}</b> · típico <b class="mono">${f2(tp)}</b></span><span>${nota}</span></div></div>`).join("")+
-    `<p class="leyenda-m">Escala de 0 a 50. Punto lleno: simulado. Círculo: visión típica. Zona rojiza: por debajo del umbral 10.</p>`;
-  p.querySelector("[data-map]").insertAdjacentHTML("beforeend",recO.map((c,i)=>
-    `<div class="r"><div><span class="m" style="background:${c}"></span><span class="mono">${c}</span></div>
-     <div><span class="m" style="background:${recP[i]}"></span><span class="mono">${recP[i]}</span></div></div>`).join(""));
+    `<p class="leyenda-m">Escala de 0 a 50. Punto lleno: simulado. Círculo: visión típica. Zona rojiza: por debajo del umbral 10.</p>`
+    :`<p class="sin-datos">Ningún par por debajo del umbral con la simulación seleccionada.</p>`;
+  const rec=p.querySelector("[data-recomendacion]");
+  if(d.recomendacion==="propuesta"){
+    rec.innerHTML=`<div class="esquema"><b>Tol cualitativo de 12</b><span>Primer esquema acreditado para protanopía con capacidad 12 ≥ 8 series que superó la revalidación.</span></div>
+      <div class="kpis"><div><b>3</b>esquemas probados</div><div><b>3</b>sustituciones</div><div><b class="mono">13,33</b>ΔE00 mínimo</div></div>
+      <div class="franja"><div class="fila"><span>Original</span><div class="banda" data-banda="rec-o"></div></div><div class="fila"><span>Propuesta</span><div class="banda" data-banda="rec-p"></div></div></div>
+      <div class="map" data-map><div class="cab-t"><span>Original</span><span>Propuesta</span></div></div>
+      <div class="interruptor"><span>Previsualizar en la página</span><span class="sw" role="switch" aria-checked="true" tabindex="0"></span></div>`;
+    b("rec-o",d.recO);b("rec-p",d.recP);
+    rec.querySelector("[data-map]").insertAdjacentHTML("beforeend",d.recO.map((c,i)=>
+      `<div class="r"><div><span class="m" style="background:${c}"></span><span class="mono">${c}</span></div>
+       <div><span class="m" style="background:${d.recP[i]}"></span><span class="mono">${d.recP[i]}</span></div></div>`).join(""));
+  } else {
+    const min=12.26,umbral=10,margen=min-umbral;
+    rec.innerHTML=`<div class="cumple" role="status">
+      <div class="cabecera"><span class="sello">Cumple</span><span class="contexto">Protanopía (severidad máxima)</span></div>
+      <h3>Tu paleta ya es accesible</h3>
+      <p class="lead">Las 4 series se distinguen entre sí y ninguno de sus pares falla el contraste. No hace falta cambiar colores.</p>
+      <div class="bandas"><span>Visión típica</span><div class="banda" data-banda="c-o"></div><span>Protanopía</span><div class="banda" data-banda="c-s"></div></div>
+      <div class="cifras-cumple"><div class="cifra"><span class="v mono">${f2(min)}</span><span class="e">ΔE00 mínimo</span></div><div class="cifra"><span class="v mono">0</span><span class="e">fallos de contraste</span></div><div class="cifra"><span class="v mono">4</span><span class="e">series evaluadas</span></div></div>
+      <div class="margen"><div class="tit"><span>Par más cercano frente al umbral 10,0</span><b class="mono">+${f2(margen)}</b></div>
+        <div class="regla" aria-hidden="true"><div class="zona" style="width:${pos(umbral)}%"></div><div class="punto" style="left:${pos(min)}%"></div></div>
+        <div class="eje mono" aria-hidden="true"><span style="left:0">0</span><span style="left:${pos(umbral)}%">10</span><span style="left:100%">50</span></div></div>
+    </div>`;
+    b("c-o",d.orig);b("c-s",d.sim);
+  }
 }
 const L=document.getElementById("lienzo"),T=document.getElementById("tpl");
-[["","Arranca en claro · 380 px"],["oscuro","Arranca en oscuro · 380 px"]].forEach(([cls,cap])=>{
+[["evaluado","Evaluado · claro · panel-svg, protanopía (propuesta)",svg],["evaluado oscuro","Evaluado · Azul noche · panel-svg, protanopía",svg],
+ ["evaluado","Evaluado · claro · panel-cumple, protanopía (tarjeta «Cumple»)",cumple],["inicial","Estado inicial · claro · lista del selector abierta",svg]].forEach(([cls,cap,d],k)=>{
   const fig=document.createElement("figure");fig.className="marco";fig.style.margin="0";
-  const n=T.content.cloneNode(true);const p=n.querySelector(".panel");if(cls)p.classList.add(cls);
-  p.querySelectorAll("[id]").forEach(e=>{e.id+=cls||"c"});p.querySelectorAll("label[for]").forEach(e=>{e.htmlFor+=cls||"c"});
-  montar(p);
+  const n=T.content.cloneNode(true);const p=n.querySelector(".panel");p.className="panel "+cls;
+  p.querySelectorAll("[id]").forEach(e=>{e.id+="-"+k});p.querySelectorAll("label[for]").forEach(e=>{e.htmlFor+="-"+k});
+  montar(p,d);
+  if(cls==="inicial"){
+    p.querySelector("[data-cabecera]").textContent="Pestaña sin evaluar";
+    p.querySelector("[data-valor-tipo]").textContent="Ninguna";
+    p.querySelector(".campo").classList.add("abierto");
+    p.querySelector("[data-lista]").innerHTML=lista;
+  } else {
+    const bt=p.querySelector("[data-boton-evaluar]");bt.textContent="Volver a evaluar";bt.classList.remove("btn-principal");bt.classList.add("btn-tonal");
+  }
   const grupo=p.querySelector('.tema'), bots=[...grupo.querySelectorAll('button')];
   const sync=()=>{const v=p.classList.contains('oscuro')?'oscuro':'claro';grupo.dataset.valor=v;
     bots.forEach(x=>{const on=x.dataset.t===v;x.setAttribute('aria-checked',String(on));x.tabIndex=on?0:-1;});};

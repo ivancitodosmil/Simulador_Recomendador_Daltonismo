@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Evaluador cromático de dashboards",
-  "version": "0.6.10",
+  "version": "1.0.0",
   "description": "Evalúa la accesibilidad cromática de dashboards para personas con daltonismo: simula deficiencias, mide contraste WCAG y propone paletas. Todo el cálculo es local.",
-  "minimum_chrome_version": "116",
+  "minimum_chrome_version": "117",
   "icons": {
     "16": "assets/iconos/icono-16.png",
     "32": "assets/iconos/icono-32.png",
@@ -26,7 +26,7 @@
     "service_worker": "src/background/service-worker.js",
     "type": "module"
   },
-  "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
+  "permissions": ["scripting", "sidePanel", "storage", "webNavigation"],
   "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [
     {
@@ -36,10 +36,13 @@
         "src/core/color/contraste.js",
         "src/core/extraccion/dom-svg.js",
         "src/core/extraccion/canvas.js",
+        "src/core/extraccion/cuantizacion.js",
         "src/core/extraccion/consolidacion.js",
         "src/core/simulacion/filtro-svg.js",
         "src/core/simulacion/machado.js",
         "src/core/simulacion/matrices.js",
+        "src/core/simulacion/brettel.js",
+        "src/core/simulacion/imagen.js",
         "src/core/evaluacion/contraste-wcag.js"
       ],
       "matches": ["<all_urls>"]
