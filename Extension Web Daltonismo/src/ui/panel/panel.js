@@ -133,15 +133,18 @@ const ROLE_LABELS = {
 
 const ERROR_MESSAGES = {
   "unsupported-page": "Esta página no se puede evaluar: es una página interna del navegador o de la tienda de extensiones.",
-  "no-access": "La extensión aún no tiene acceso a esta pestaña. Haz clic en el icono de la extensión con esa pestaña en primer plano y vuelve a pulsar «Extraer paleta y evaluar».",
+  "no-access": "La extensión aún no tiene acceso a esta pestaña. Haz clic en el icono de la extensión con esa pestaña en primer plano y vuelve a pulsar «Evaluar accesibilidad».",
   "no-active-tab": "No se encontró una pestaña activa que evaluar.",
   "injection-failed": "No se pudo acceder a la página para analizarla.",
   "extraction-failed": "La extracción falló dentro de la página.",
   "unexpected": "Ocurrió un error inesperado durante la evaluación."
 };
 
+// Sin deficiencia elegida «Evaluar accesibilidad» no evalúa: lo explica.
+const NO_DEFICIENCY_TEXT = "Elige un tipo de deficiencia para evaluar.";
+
 const SIMULATION_HELP = {
-  default: "Se aplica solo a esta pestaña. Elige «Ninguna» para ver los colores originales.",
+  default: "Elige una deficiencia para simularla en esta pestaña y poder evaluar; «Ninguna» muestra los colores originales.",
   tritanopia: "En tritanopía la severidad no se gradúa (método de Brettel) y el filtro sobre la página es una aproximación; la paleta del panel usa el cálculo exacto."
 };
 
@@ -204,7 +207,6 @@ const state = {
   selectionSource: null,
   ui: { family: null, collapsed: {}, scrollY: 0, selection: null, selectionEvaluatedAt: null },
   restoringSections: false,
-  suggestionAdopted: null,
   theme: null,
   // Desenlace bajo las tres deficiencias (sin simulación), para el reporte.
   overview: null,
@@ -512,9 +514,6 @@ function persistTabSimulation() {
   if (!state.tabId) return;
   try {
     chrome.storage.session.set({ ["sim:" + state.tabId]: { ...state.simulation } });
-    if (state.simulation.type !== "none") {
-      chrome.storage.local.set({ lastSimulation: { ...state.simulation } });
-    }
   } catch (error) {
     // Sin almacenamiento disponible se sigue funcionando en memoria.
   }
@@ -536,21 +535,6 @@ async function loadTabSimulation() {
   }
 }
 
-async function loadSuggestedSimulation() {
-  try {
-    const stored = await chrome.storage.local.get(["lastSimulation"]);
-    const last = stored.lastSimulation;
-    if (last && typeof last.type === "string" && last.type in SIMULATION_LABELS && last.type !== "none") {
-      return {
-        type: last.type,
-        severity: typeof last.severity === "number" ? Math.min(1, Math.max(0, last.severity)) : 1
-      };
-    }
-  } catch (error) {
-    // Sin sugerencia.
-  }
-  return null;
-}
 
 /**
  * Sincroniza el filtro de la página con el desplegable: página simulada
@@ -1722,33 +1706,24 @@ function render() {
     (failingContrast === 1 ? " par de contraste incumple" : " pares de contraste incumplen") +
     " y " + conflictCount + (conflictCount === 1 ? " par de series confundible" : " pares de series confundibles") + ".");
 
-  const adopted = state.suggestionAdopted;
-  state.suggestionAdopted = null;
-  if (adopted) {
-    setStatus("info", "Se aplicó la última simulación usada (" + SIMULATION_LABELS[adopted.type] +
-      (adopted.type === "tritanopia" ? "" : " " + formatNumber(adopted.severity, 1)) +
-      ") como valor sugerido; cámbiala en «Tipo de deficiencia» si no la quieres.", "simulation");
-  }
   setEvaluateButtonState(true);
 }
 
 async function runEvaluation() {
+  clearStatus();
+  // Sin deficiencia elegida no hay nada que evaluar: se explica, se lleva
+  // el foco al selector y el botón sigue habilitado.
+  if (state.simulation.type === "none") {
+    setStatus("info", NO_DEFICIENCY_TEXT);
+    announce(NO_DEFICIENCY_TEXT);
+    deficiencySelect.focus();
+    return;
+  }
   evaluateButton.disabled = true;
   evaluateButton.textContent = "Analizando la página…";
   document.querySelector("main").setAttribute("aria-busy", "true");
-  clearStatus();
   announce("Analizando la página…");
   try {
-    if (state.simulation.type === "none") {
-      const suggested = await loadSuggestedSimulation();
-      if (suggested) {
-        state.simulation = suggested;
-        state.suggestionAdopted = suggested;
-        persistTabSimulation();
-        updateSimulationControls();
-        await syncPageFilter({ announce: false });
-      }
-    }
     // La previsualización se retira antes de leer y queda apagada después:
     // la recomendación nueva se muestra sin aplicarla.
     if (state.previewActive) await sendPreview(false, { silent: true });
@@ -1857,7 +1832,7 @@ async function loadEvaluation() {
   renderPalette();
   renderDistinguishability();
   if (!state.evaluation) {
-    announce("Pestaña sin evaluar. Pulsa «Extraer paleta y evaluar».");
+    announce("Pestaña sin evaluar. Elige un tipo de deficiencia y pulsa «Evaluar accesibilidad».");
   } else if (state.ui.scrollY > 0) {
     window.scrollTo({ top: state.ui.scrollY, behavior: "auto" });
   }
@@ -2067,27 +2042,22 @@ chrome.tabs.onActivated.addListener(() => {
   loadEvaluation();
 });
 
-/** Migra las claves de simulación de versiones anteriores a lastSimulation. */
-async function migrateLocalStorage() {
+/**
+ * Limpia del almacenamiento local las claves de versiones anteriores: la
+ * configuración global de simulación (hasta 0.5) y la última simulación
+ * usada como sugerencia (0.6 a 1.0). Hoy solo se guarda el tema.
+ */
+async function cleanLocalStorage() {
   try {
-    const stored = await chrome.storage.local.get(["lastSimulation", "simulationType", "simulationSeverity", "paletteFamily"]);
-    if (!stored.lastSimulation && typeof stored.simulationType === "string" && stored.simulationType !== "none") {
-      await chrome.storage.local.set({
-        lastSimulation: {
-          type: stored.simulationType,
-          severity: typeof stored.simulationSeverity === "number" ? stored.simulationSeverity : 1
-        }
-      });
-    }
-    await chrome.storage.local.remove(["simulationType", "simulationSeverity", "paletteFamily"]);
+    await chrome.storage.local.remove(["lastSimulation", "simulationType", "simulationSeverity", "paletteFamily"]);
   } catch (error) {
-    // Sin almacenamiento: nada que migrar.
+    // Sin almacenamiento: nada que limpiar.
   }
 }
 
 (async function init() {
   thresholdInput.value = String(DEFAULT_CONFUSION_THRESHOLD);
   await loadTheme();
-  await migrateLocalStorage();
+  await cleanLocalStorage();
   await loadEvaluation();
 })();

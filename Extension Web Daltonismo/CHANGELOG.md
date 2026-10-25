@@ -178,6 +178,19 @@ validado sobre el banco de pruebas.
   número de marcos leídos.
 
 ### Cambiado
+- «Evaluar accesibilidad» con «Ninguna» ya no evalúa: muestra «Elige un
+  tipo de deficiencia para evaluar.» en la región de estado de la
+  tarjeta, lo anuncia por `aria-live` y lleva el foco al selector; el
+  botón sigue habilitado. Se elimina la «última simulación usada» que se
+  adoptaba como valor sugerido al evaluar, con su mensaje y la clave
+  `lastSimulation` de `chrome.storage.local` (al abrir el panel se
+  limpian esa clave y las de versiones anteriores; en local solo queda
+  el tema). Cambiar a «Ninguna» con una evaluación hecha sigue retirando
+  la simulación y la previsualización y conserva la evaluación. La ayuda
+  de «Simulación» pasa a «Elige una deficiencia para simularla en esta
+  pestaña y poder evaluar; «Ninguna» muestra los colores originales.».
+  El error de acceso a la pestaña y el anuncio inicial nombran ya
+  «Evaluar accesibilidad».
 - Mensajes de estado por tarjeta y sin restos: los de la simulación
   (aplicada o retirada, cambio de página) van en «Simulación» y los de la
   evaluación (terminada o descartada, previsualización, reporte, errores)
